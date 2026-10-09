@@ -3,6 +3,7 @@ animados/ocultos/workshop + monitores), cuadricula de tarjetas de wallpapers
 locales con filtros combinables, y panel de detalle a la derecha con la
 informacion del wallpaper seleccionado."""
 import datetime
+import json
 import os
 import subprocess
 import threading
@@ -18,10 +19,16 @@ from .config import (
     load_known_bad, load_playlists, save_playlists, load_ui_state, save_ui_state,
     unsubscribe_workshop_item, build_thumb, SORT_OPTIONS, SORT_REVERSE, APPLY_SCRIPT,
     CACHE_DIR, STEAM_LIB, load_scaling, save_scaling, SCALING_MODES, DEFAULT_SCALING,
+    load_properties, save_properties, KNOWN_BAD_FILE,
+    load_audio, save_audio, DEFAULT_VOLUME,
+    load_speed, save_speed, SPEED_OPTIONS, DEFAULT_SPEED,
+    has_hidden_password, set_hidden_password, clear_hidden_password, verify_hidden_password,
 )
 from .ui import icon_button, open_in_steam, apply_css, WallpaperCard, CARD_SIZE
 from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
+from .properties_window import PropertiesDialog
+from .repair import attempt_repair, attempt_repair_all
 
 TABS = ["Todos", "Favoritos", "Recientes", "Animados", "Ocultos"]
 SCALING_LABELS = {
@@ -148,10 +155,17 @@ class PickerWindow(Gtk.Window):
         self.monitors = detect_monitors() or ["DP-2"]
         self.assignments = load_current_assignments(self.monitors)
         self.scaling = load_scaling()
+        self.audio = load_audio()
+        self.speed = load_speed()
 
         ui_state = load_ui_state()
         self.target_monitor = ui_state.get("target_monitor") if ui_state.get("target_monitor") in self.monitors else self.monitors[0]
         self.current_tab = ui_state.get("tab") if ui_state.get("tab") in TABS else "Todos"
+        # Si se cerro la app estando en "Ocultos" y hay contraseña configurada, no
+        # restaurar directamente ahi al reabrir — seria una forma trivial de saltarse
+        # la contraseña sin mas que cerrar y volver a abrir la ventana.
+        if self.current_tab == "Ocultos" and has_hidden_password():
+            self.current_tab = "Todos"
 
         self.all_items = []
         self.items_by_id = {}
@@ -321,6 +335,45 @@ class PickerWindow(Gtk.Window):
         self.scaling_combo.connect("changed", self.on_scaling_changed)
         chips_box.pack_start(self.scaling_combo, False, False, 0)
 
+        chips_box.pack_start(Gtk.Label(label="Audio:"), False, False, 0)
+        self.audio_toggle = Gtk.ToggleButton()
+        self.audio_toggle.set_relief(Gtk.ReliefStyle.NONE)
+        self.audio_toggle.connect("toggled", self.on_audio_toggled)
+        chips_box.pack_start(self.audio_toggle, False, False, 0)
+
+        self.volume_scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL)
+        self.volume_scale.set_range(0, 100)
+        self.volume_scale.set_draw_value(False)
+        self.volume_scale.set_size_request(90, -1)
+        self.volume_scale.set_tooltip_text("Volumen")
+        self.volume_scale.connect("value-changed", self.on_volume_changed)
+        self.volume_scale.connect("button-release-event", self.on_volume_release)
+        chips_box.pack_start(self.volume_scale, False, False, 0)
+
+        # handler_block imprescindible aqui: set_active() dispara "toggled" de forma
+        # SINCRONA en GTK si el estado cambia, y self.status_label (referenciado dentro
+        # de on_audio_toggled) todavia no existe en este punto de la construccion —
+        # se crea mas tarde en _build_bottom_bar(). Sin el bloqueo, arrancar la app con
+        # el audio activado guardado en audio.json crasheaba con AttributeError en cada
+        # inicio (visto en produccion real, journalctl confirma 4 crashes seguidos).
+        audio_conf = self.audio.get(self.target_monitor, {})
+        self.audio_toggle.handler_block_by_func(self.on_audio_toggled)
+        self.audio_toggle.set_active(not audio_conf.get("muted", True))
+        self.audio_toggle.handler_unblock_by_func(self.on_audio_toggled)
+        self.volume_scale.set_value(audio_conf.get("volume", DEFAULT_VOLUME))
+        self._sync_audio_widgets()
+
+        chips_box.pack_start(Gtk.Label(label="Velocidad:"), False, False, 0)
+        self.speed_combo = Gtk.ComboBoxText()
+        for s in SPEED_OPTIONS:
+            self.speed_combo.append_text(f"{s:g}x")
+        current_speed = self.speed.get(self.target_monitor, DEFAULT_SPEED)
+        idx = SPEED_OPTIONS.index(current_speed) if current_speed in SPEED_OPTIONS else 0
+        self.speed_combo.set_active(idx)
+        self.speed_combo.set_tooltip_text("Velocidad de reproduccion (solo afecta a wallpapers de video)")
+        self.speed_combo.connect("changed", self.on_speed_changed)
+        chips_box.pack_start(self.speed_combo, False, False, 0)
+
         box.pack_start(chips_box, False, False, 0)
         return box
 
@@ -332,7 +385,7 @@ class PickerWindow(Gtk.Window):
         bottom_box.pack_start(self.status_label, True, True, 0)
 
         self.show_hidden_check = Gtk.CheckButton(label="Mostrar ocultos")
-        self.show_hidden_check.connect("toggled", self.on_filters_changed)
+        self.show_hidden_check.connect("toggled", self.on_show_hidden_toggled)
         bottom_box.pack_start(self.show_hidden_check, False, False, 0)
 
         rotation_btn = icon_button("Rotacion", "media-playlist-repeat-symbolic")
@@ -366,6 +419,8 @@ class PickerWindow(Gtk.Window):
 
         add_action("Ocultar/Mostrar seleccionados", "list-remove-symbolic", self.on_toggle_hidden_clicked)
         add_action("Desuscribirse (seleccionados)", "user-trash-symbolic", self.on_unsubscribe_clicked)
+        box.pack_start(Gtk.Separator(), False, False, 2)
+        add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
         box.show_all()
         popover.add(box)
 
@@ -416,6 +471,16 @@ class PickerWindow(Gtk.Window):
         rotation_btn = icon_button("Anadir a rotacion", "media-playlist-repeat-symbolic")
         rotation_btn.connect("clicked", self._on_detail_add_rotation)
         panel.pack_start(rotation_btn, False, False, 0)
+
+        customize_btn = icon_button("Personalizar", "preferences-desktop-symbolic")
+        customize_btn.connect("clicked", self._on_detail_customize_clicked)
+        panel.pack_start(customize_btn, False, False, 0)
+
+        self.detail_repair_btn = icon_button("Reparar fallo conocido", "applications-utilities-symbolic")
+        self.detail_repair_btn.connect("clicked", self._on_detail_repair_clicked)
+        self.detail_repair_btn.set_no_show_all(True)
+        self.detail_repair_btn.set_visible(False)
+        panel.pack_start(self.detail_repair_btn, False, False, 0)
 
         self.detail_hide_btn = icon_button("Ocultar", "list-remove-symbolic")
         self.detail_hide_btn.connect("clicked", self._on_detail_hide_clicked)
@@ -520,6 +585,21 @@ class PickerWindow(Gtk.Window):
         self.flowbox.invalidate_filter()
         self.flowbox.invalidate_sort()
 
+    def _badge_for(self, wid):
+        if wid in self.known_bad:
+            return "⚠ Fallo conocido"
+        item = self.items_by_id.get(wid)
+        if item and item.get("type") == "Web":
+            # Confirmado en pruebas reales: 18 de 19 wallpapers tipo Web crashean al
+            # cambiar de wallpaper (bug conocido y sin resolver de CEF/GPU en
+            # linux-wallpaperengine bajo Wayland, issues #628 y #629 del proyecto). El
+            # cambio de todas formas se completa (el siguiente wallpaper carga bien),
+            # pero es mejor avisar de antemano que enterarse solo por el log.
+            return "⚠ Tipo Web: inestable"
+        if wid in self.hidden_ids:
+            return "Oculto"
+        return None
+
     def _build_card(self, item):
         wid = item["id"]
         subtitle_parts = []
@@ -529,15 +609,9 @@ class PickerWindow(Gtk.Window):
             subtitle_parts.append(item["tags"][0])
         subtitle = " · ".join(subtitle_parts)
 
-        badge = None
-        if wid in self.known_bad:
-            badge = "⚠ Fallo conocido"
-        elif wid in self.hidden_ids:
-            badge = "Oculto"
-
         card = WallpaperCard(
             wid, item["title"], subtitle, item["pixbuf"],
-            favorite=wid in self.favorite_ids, badge=badge,
+            favorite=wid in self.favorite_ids, badge=self._badge_for(wid),
             assigned=(self.assignments.get(self.target_monitor) == wid),
         )
         card.on_assign = self.assign_and_apply
@@ -555,17 +629,17 @@ class PickerWindow(Gtk.Window):
 
     def _passes_tab_filter(self, wid):
         item = self.items_by_id.get(wid, {})
-        if self.current_tab == "Favoritos":
-            return wid in self.favorite_ids
         if self.current_tab == "Ocultos":
             return wid in self.hidden_ids
+        if self.current_tab == "Favoritos":
+            return wid in self.favorite_ids and wid not in self.hidden_ids
         if self.current_tab == "Recientes":
-            return wid in self.recent_ids
+            return wid in self.recent_ids and wid not in self.hidden_ids
         if self.current_tab == "Animados":
             # "Scene" puede o no tener movimiento (Wallpaper Engine no expone un
             # flag fiable de estatico/animado); "Video" y "Web" si son siempre
             # dinamicos, asi que la pestana se limita a esos dos tipos.
-            return item.get("type") in ("Video", "Web")
+            return item.get("type") in ("Video", "Web") and wid not in self.hidden_ids
         if self.show_hidden_check.get_active():
             return True
         return wid not in self.hidden_ids  # "Todos"
@@ -621,10 +695,89 @@ class PickerWindow(Gtk.Window):
     def on_tab_toggled(self, btn, label):
         if not btn.get_active():
             return
+        if label == "Ocultos" and has_hidden_password() and not self._prompt_hidden_password():
+            previous = self.current_tab
+            prev_btn = self.tab_buttons.get(previous)
+            if prev_btn:
+                prev_btn.set_active(True)
+            return
         self.current_tab = label
         self.flowbox.invalidate_filter()
         self.flowbox.invalidate_sort()
         self.save_current_ui_state()
+
+    def on_show_hidden_toggled(self, check):
+        if check.get_active() and has_hidden_password() and not self._prompt_hidden_password():
+            check.handler_block_by_func(self.on_show_hidden_toggled)
+            check.set_active(False)
+            check.handler_unblock_by_func(self.on_show_hidden_toggled)
+            return
+        self.on_filters_changed()
+
+    def _make_pin_entry(self):
+        """Campo de entrada restringido a 4 digitos numericos (PIN), oculto como
+        contraseña. Filtra cualquier caracter que no sea un digito al escribirlo
+        (tambien al pegar), reescribiendo el contenido en el handler de "changed"
+        — mas simple y robusto que interceptar "insert-text" (cuya firma exacta en
+        PyGObject varia y dio TypeError al probarlo)."""
+        entry = Gtk.Entry()
+        entry.set_visibility(False)
+        # OJO: no usar set_max_length(4) aqui — GTK trunca los caracteres BRUTOS a ese
+        # limite antes de que el filtro de abajo pueda operar, asi que una letra de mas
+        # (p.ej. "a1b2c3d4e5" truncado a "a1b2" por GTK) consume hueco del limite y
+        # descarta digitos validos que venian despues. La longitud maxima la controla
+        # solo `sanitize()`, sobre el string ya filtrado.
+        entry.set_width_chars(6)
+        entry.set_alignment(0.5)
+        entry.set_input_purpose(Gtk.InputPurpose.DIGITS)
+
+        def sanitize(e):
+            raw = e.get_text()
+            clean = "".join(c for c in raw if c.isdigit())[:4]
+            if clean != raw:
+                e.handler_block_by_func(sanitize)
+                e.set_text(clean)
+                e.set_position(-1)
+                e.handler_unblock_by_func(sanitize)
+
+        entry.connect("changed", sanitize)
+        return entry
+
+    def _prompt_hidden_password(self):
+        dialog = Gtk.Dialog(title="PIN requerido", transient_for=self, modal=True)
+        dialog.set_default_size(280, -1)
+        box = dialog.get_content_area()
+        box.set_border_width(14)
+        box.set_spacing(8)
+        box.add(Gtk.Label(label="Introduce el PIN de 4 digitos para ver los wallpapers ocultos:", xalign=0.5))
+        entry = self._make_pin_entry()
+        entry.set_activates_default(True)
+        box.add(entry)
+        error_label = Gtk.Label(xalign=0.5)
+        error_label.get_style_context().add_class("dim-label")
+        box.add(error_label)
+        dialog.add_button("Cancelar", Gtk.ResponseType.CANCEL)
+        ok_btn = dialog.add_button("Entrar", Gtk.ResponseType.OK)
+        ok_btn.get_style_context().add_class("suggested-action")
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        # Auto-confirmar al completar los 4 digitos, sin esperar a Enter/clic — es
+        # el comportamiento habitual de un PIN.
+        entry.connect("changed", lambda e: dialog.response(Gtk.ResponseType.OK) if len(e.get_text()) == 4 else None)
+        dialog.show_all()
+
+        ok = False
+        while True:
+            response = dialog.run()
+            if response != Gtk.ResponseType.OK:
+                break
+            if verify_hidden_password(entry.get_text()):
+                ok = True
+                break
+            error_label.set_markup("<span foreground='#e74c3c'>PIN incorrecto</span>")
+            entry.set_text("")
+            entry.grab_focus()
+        dialog.destroy()
+        return ok
 
     # -- Monitores y asignacion -----------------------------------------------
 
@@ -660,6 +813,8 @@ class PickerWindow(Gtk.Window):
         if self._detail_wid:
             self._update_detail_panel(self._detail_wid)
         self._sync_scaling_combo()
+        self._sync_audio_widgets()
+        self._sync_speed_combo()
         self.save_current_ui_state()
 
     def _sync_scaling_combo(self):
@@ -678,6 +833,73 @@ class PickerWindow(Gtk.Window):
         save_scaling(self.scaling)
         self._reapply_current(self.target_monitor)
         self.status_label.set_text(f"Escalado de {self.target_monitor}: {SCALING_LABELS.get(mode, mode)}")
+
+    def _sync_speed_combo(self):
+        speed = self.speed.get(self.target_monitor, DEFAULT_SPEED)
+        idx = SPEED_OPTIONS.index(speed) if speed in SPEED_OPTIONS else 0
+        self.speed_combo.handler_block_by_func(self.on_speed_changed)
+        self.speed_combo.set_active(idx)
+        self.speed_combo.handler_unblock_by_func(self.on_speed_changed)
+
+    def on_speed_changed(self, combo):
+        idx = combo.get_active()
+        if idx < 0:
+            return
+        speed = SPEED_OPTIONS[idx]
+        self.speed[self.target_monitor] = speed
+        save_speed(self.speed)
+        self._reapply_current(self.target_monitor)
+        self.status_label.set_text(f"Velocidad de {self.target_monitor}: {speed:g}x")
+
+    def _sync_audio_widgets(self):
+        conf = self.audio.get(self.target_monitor, {})
+        muted = conf.get("muted", True)
+        volume = conf.get("volume", DEFAULT_VOLUME)
+
+        self.audio_toggle.handler_block_by_func(self.on_audio_toggled)
+        self.audio_toggle.set_active(not muted)
+        self.audio_toggle.handler_unblock_by_func(self.on_audio_toggled)
+
+        self.volume_scale.handler_block_by_func(self.on_volume_changed)
+        self.volume_scale.set_value(volume)
+        self.volume_scale.handler_unblock_by_func(self.on_volume_changed)
+
+        self.volume_scale.set_sensitive(not muted)
+        icon = "audio-volume-high-symbolic" if not muted else "audio-volume-muted-symbolic"
+        self.audio_toggle.set_image(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON))
+        self.audio_toggle.set_tooltip_text(
+            f"Audio activado ({self.target_monitor})" if not muted else f"Audio silenciado ({self.target_monitor})"
+        )
+
+    def _save_audio_for_target(self, muted, volume):
+        self.audio[self.target_monitor] = {"muted": muted, "volume": volume}
+        save_audio(self.audio)
+        self._reapply_current(self.target_monitor)
+
+    def on_audio_toggled(self, toggle):
+        muted = not toggle.get_active()
+        volume = int(self.volume_scale.get_value())
+        self._save_audio_for_target(muted, volume)
+        self.volume_scale.set_sensitive(not muted)
+        icon = "audio-volume-high-symbolic" if not muted else "audio-volume-muted-symbolic"
+        self.audio_toggle.set_image(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON))
+        self.status_label.set_text(
+            f"Audio {'activado' if not muted else 'silenciado'} en {self.target_monitor}"
+        )
+
+    def on_volume_changed(self, scale):
+        # Solo actualiza el valor en memoria mientras se arrastra; guardar a disco
+        # y relanzar el motor se hace al soltar (on_volume_release), para no
+        # reiniciar linux-wallpaperengine en cada tick del deslizador.
+        if not self.audio_toggle.get_active():
+            return
+        conf = self.audio.setdefault(self.target_monitor, {"muted": False})
+        conf["volume"] = int(scale.get_value())
+
+    def on_volume_release(self, scale, event):
+        if self.audio_toggle.get_active():
+            self._save_audio_for_target(False, int(scale.get_value()))
+        return False
 
     def _reapply_current(self, monitor):
         wid = self.assignments.get(monitor)
@@ -747,7 +969,7 @@ class PickerWindow(Gtk.Window):
             self.hidden_ids.discard(wid)
         card = self.cards.get(wid)
         if card:
-            card.set_badge("⚠ Fallo conocido" if wid in self.known_bad else ("Oculto" if hidden else None))
+            card.set_badge(self._badge_for(wid))
         if wid == self._detail_wid:
             self.detail_hide_btn.set_label("Mostrar de nuevo" if hidden else "Ocultar")
 
@@ -845,6 +1067,7 @@ class PickerWindow(Gtk.Window):
 
         self.detail_assign_btn.set_label(f"Asignar a {self.target_monitor}")
         self.detail_hide_btn.set_label("Mostrar de nuevo" if wid in self.hidden_ids else "Ocultar")
+        self.detail_repair_btn.set_visible(wid in self.known_bad)
 
         for child in list(self.detail_info_grid.get_children()):
             self.detail_info_grid.remove(child)
@@ -897,6 +1120,112 @@ class PickerWindow(Gtk.Window):
     def _on_detail_add_rotation(self, button):
         if self._detail_wid:
             self.add_to_rotation(self._detail_wid, self.target_monitor)
+
+    def _on_detail_customize_clicked(self, button):
+        if not self._detail_wid:
+            return
+        wid = self._detail_wid
+        item = self.items_by_id.get(wid, {})
+        dialog = PropertiesDialog(self, wid, item.get("title", wid), on_saved=self._on_properties_saved)
+        dialog.run_and_handle()
+
+    def _on_properties_saved(self, wid):
+        screens = [mon for mon, vid in self.assignments.items() if vid == wid]
+        for mon in screens:
+            self._reapply_current(mon)
+        if screens:
+            self.status_label.set_text(f"Propiedades guardadas, reaplicado en: {', '.join(screens)}")
+        else:
+            self.status_label.set_text("Propiedades guardadas (se aplicaran la proxima vez que asignes este wallpaper)")
+
+    def _on_detail_repair_clicked(self, button):
+        if not self._detail_wid:
+            return
+        wid = self._detail_wid
+        self.status_label.set_text("Intentando reparar...")
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
+        ok, msg = attempt_repair(wid)
+        dialog = Gtk.MessageDialog(
+            transient_for=self, modal=True,
+            message_type=Gtk.MessageType.INFO if ok else Gtk.MessageType.WARNING,
+            text="Reparado" if ok else "No se pudo reparar",
+        )
+        dialog.format_secondary_text(msg)
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.run()
+        dialog.destroy()
+
+        if ok:
+            self._remove_known_bad(wid)
+            card = self.cards.get(wid)
+            if card:
+                card.set_badge(self._badge_for(wid))
+            self.detail_repair_btn.set_visible(False)
+            self.status_label.set_text(f"Reparado: {msg}")
+
+    def _remove_known_bad(self, wid):
+        if wid not in self.known_bad:
+            return
+        self.known_bad.pop(wid, None)
+        try:
+            with open(KNOWN_BAD_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.known_bad, f, indent=2)
+        except Exception:
+            pass
+
+    def on_repair_all_clicked(self, button):
+        dialog = Gtk.MessageDialog(
+            transient_for=self, modal=True, message_type=Gtk.MessageType.QUESTION,
+            text="Reparar toda la biblioteca",
+        )
+        dialog.format_secondary_text(
+            "Revisa todos los wallpapers descargados en busca de la incompatibilidad "
+            "conocida de 'padding' en objetos de texto (la que hacia crashear a "
+            "linux-wallpaperengine) y la corrige automaticamente. Cada scene.pkg "
+            "modificado se respalda antes como scene.pkg.bak_original. Puede tardar "
+            "un rato si tienes muchos wallpapers descargados."
+        )
+        dialog.add_buttons("Cancelar", Gtk.ResponseType.CANCEL, "Reparar", Gtk.ResponseType.OK)
+        response = dialog.run()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return
+
+        self.status_label.set_text("Reparando biblioteca... 0%")
+        threading.Thread(target=self._repair_all_thread, daemon=True).start()
+
+    def _repair_all_thread(self):
+        def progress(i, total, wid):
+            pct = int(100 * i / total) if total else 100
+            GLib.idle_add(self.status_label.set_text, f"Reparando biblioteca... {pct}% ({i}/{total})")
+
+        repaired, total = attempt_repair_all(progress_callback=progress)
+        GLib.idle_add(self._on_repair_all_done, repaired, total)
+
+    def _on_repair_all_done(self, repaired, total):
+        for wid in repaired:
+            self._remove_known_bad(wid)
+            card = self.cards.get(wid)
+            if card:
+                card.set_badge(self._badge_for(wid))
+
+        dialog = Gtk.MessageDialog(
+            transient_for=self, modal=True, message_type=Gtk.MessageType.INFO,
+            text="Reparacion de biblioteca completada",
+        )
+        if repaired:
+            names = ", ".join(self.items_by_id.get(w, {}).get("title", w) for w in repaired)
+            dialog.format_secondary_text(f"Reparados {len(repaired)} de {total} wallpapers revisados:\n{names}")
+        else:
+            dialog.format_secondary_text(f"Revisados {total} wallpapers, ninguno tenia esta incompatibilidad.")
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.run()
+        dialog.destroy()
+
+        self.status_label.set_text(f"Biblioteca revisada: {len(repaired)}/{total} reparados")
+        return False
 
     def _on_detail_hide_clicked(self, button):
         if not self._detail_wid:
@@ -1022,18 +1351,78 @@ class PickerWindow(Gtk.Window):
             self.playlist_window.present()
 
     def on_open_settings(self, button):
-        dialog = Gtk.MessageDialog(
-            transient_for=self, modal=True, message_type=Gtk.MessageType.INFO,
-            text="Ajustes",
-        )
-        dialog.format_secondary_text(
-            f"Biblioteca de Steam: {STEAM_LIB}\n"
-            f"Cache de miniaturas: {CACHE_DIR}\n\n"
+        dialog = Gtk.Dialog(title="Ajustes", transient_for=self, modal=True)
+        dialog.set_default_size(380, -1)
+        box = dialog.get_content_area()
+        box.set_border_width(14)
+        box.set_spacing(10)
+
+        info = Gtk.Label(xalign=0)
+        info.set_line_wrap(True)
+        info.set_markup(
+            f"Biblioteca de Steam: {GLib.markup_escape_text(STEAM_LIB)}\n"
+            f"Cache de miniaturas: {GLib.markup_escape_text(CACHE_DIR)}\n\n"
             "Para cambiar la biblioteca de Steam o la API key de Steam, edita\n"
-            "~/.config/wallpaperengine-picker/config.json"
+            "<tt>~/.config/wallpaperengine-picker/config.json</tt>"
         )
+        box.add(info)
+        box.add(Gtk.Separator())
+
+        pw_label = "Cambiar o quitar PIN de Ocultos..." if has_hidden_password() else "Proteger 'Ocultos' con PIN..."
+        pw_btn = icon_button(pw_label, "dialog-password-symbolic")
+        pw_btn.connect("clicked", lambda *_: (dialog.destroy(), self._manage_hidden_password()))
+        box.add(pw_btn)
+
         dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.show_all()
         dialog.run()
+        dialog.destroy()
+
+    def _manage_hidden_password(self):
+        if has_hidden_password() and not self._prompt_hidden_password():
+            return  # no acerto la contraseña actual, no se toca nada
+
+        dialog = Gtk.Dialog(title="PIN de Ocultos", transient_for=self, modal=True)
+        dialog.set_default_size(300, -1)
+        box = dialog.get_content_area()
+        box.set_border_width(14)
+        box.set_spacing(8)
+        box.add(Gtk.Label(label="Nuevo PIN de 4 digitos (vacio para quitar la proteccion):", xalign=0.5))
+        entry1 = self._make_pin_entry()
+        box.add(entry1)
+        box.add(Gtk.Label(label="Repite el PIN:", xalign=0.5))
+        entry2 = self._make_pin_entry()
+        entry2.set_activates_default(True)
+        box.add(entry2)
+        error_label = Gtk.Label(xalign=0.5)
+        box.add(error_label)
+        dialog.add_button("Cancelar", Gtk.ResponseType.CANCEL)
+        save_btn = dialog.add_button("Guardar", Gtk.ResponseType.OK)
+        save_btn.get_style_context().add_class("suggested-action")
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        dialog.show_all()
+
+        while True:
+            response = dialog.run()
+            if response != Gtk.ResponseType.OK:
+                break
+            pin1, pin2 = entry1.get_text(), entry2.get_text()
+            if not pin1:
+                clear_hidden_password()
+                self.status_label.set_text("Proteccion de 'Ocultos' quitada")
+                break
+            if len(pin1) != 4:
+                error_label.set_markup("<span foreground='#e74c3c'>El PIN debe tener 4 digitos</span>")
+                continue
+            if pin1 != pin2:
+                error_label.set_markup("<span foreground='#e74c3c'>Los dos PIN no coinciden</span>")
+                entry1.set_text("")
+                entry2.set_text("")
+                entry1.grab_focus()
+                continue
+            set_hidden_password(pin1)
+            self.status_label.set_text("PIN de 'Ocultos' guardado")
+            break
         dialog.destroy()
 
     def on_refresh_clicked(self, *args):

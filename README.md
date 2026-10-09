@@ -4,7 +4,7 @@ Selector grafico de fondos de pantalla animados para Linux, basado en
 [linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine), con:
 
 - Interfaz con **sidebar + cuadricula + panel de detalle** (Biblioteca / Favoritos / Recientes
-  / Animados / Ocultos / Workshop), miniaturas reales en formato cuadrado (1:1), y una tarjeta por wallpaper con
+  / Animados / Workshop), miniaturas reales en formato cuadrado (1:1), y una tarjeta por wallpaper con
   favorito, insignias y acciones al pasar el raton.
 - Asignacion de un wallpaper **distinto por cada monitor**, con vista previa grande, menu
   contextual, y atajos de teclado.
@@ -83,6 +83,10 @@ wpelib/                        # la app en Python, en modulos:
   ui.py                        # tema CSS y widgets reutilizables
   workshop_window.py           # ventana de busqueda del Workshop
   playlist_window.py           # ventana de listas de rotacion
+  properties.py                # lee --list-properties de un wallpaper
+  properties_window.py         # dialogo "Personalizar" (propiedades del wallpaper)
+  repair.py                    # arregla incompatibilidades conocidas del .pkg
+  vendor_effects/               # shaders reales de xray/cursorripple usados por repair.py
   main_window.py               # ventana principal
 ```
 
@@ -123,10 +127,12 @@ La ventana principal ("Fondos de pantalla") se organiza en tres zonas:
 ### Sidebar (izquierda)
 
 - **Biblioteca / Favoritos / Recientes / Animados / Ocultos**: pestañas de navegacion.
-  Biblioteca es la vista por defecto (todo lo descargado, sin lo oculto); Animados filtra a
-  wallpapers de tipo Video o Web (los unicos que Wallpaper Engine garantiza que se mueven —
-  una escena "Scene" puede o no tener movimiento y no hay forma fiable de saberlo de
-  antemano).
+  Biblioteca es la vista por defecto (todo lo descargado, sin lo oculto); Favoritos/Recientes/
+  Animados tampoco muestran nunca los ocultos, ni siquiera si uno oculto esta marcado como
+  favorito o es reciente; Animados filtra a wallpapers de tipo Video o Web (los unicos que
+  Wallpaper Engine garantiza que se mueven — una escena "Scene" puede o no tener movimiento y
+  no hay forma fiable de saberlo de antemano). Entrar en **Ocultos** pide la contraseña si hay
+  una configurada (ver "Ocultos con contraseña" mas abajo).
 - **Workshop**: abre la ventana de busqueda del Workshop (ver mas abajo).
 - **Monitores**: lista de pantallas conectadas, cada una con el titulo del wallpaper que
   tiene puesto ahora mismo. Clicar una la marca como "pantalla activa" (a la que se aplicara
@@ -135,7 +141,7 @@ La ventana principal ("Fondos de pantalla") se organiza en tres zonas:
   / Estirar / Por defecto de la escena) que se guarda por pantalla y reaplica el wallpaper
   actual al cambiarlo — usa "Ajustar" si un wallpaper concreto se ve recortado con "Rellenar".
 - **Ajustes**: muestra la ruta detectada de tu biblioteca de Steam y donde se cachean las
-  miniaturas.
+  miniaturas, y da acceso a la contraseña de "Ocultos" (ver mas abajo).
 
 ### Panel central
 
@@ -153,16 +159,70 @@ La ventana principal ("Fondos de pantalla") se organiza en tres zonas:
   de acciones en lote (icono "⋮" de la barra inferior) para ocultarlos/desuscribirlos juntos;
   `Supr` oculta la seleccion actual.
 - Barra inferior: contador de resultados/seleccion, **"Mostrar ocultos"** (los incluye tambien
-  dentro de "Biblioteca", ademas de en su propia pestaña), **"Rotacion"**, el menu de acciones
-  en lote, y **"Actualizar"** (vuelve a leer la carpeta del Workshop, por si suscribiste algo
-  nuevo desde Steam).
+  dentro de "Biblioteca", ademas de en su propia pestaña — pide la contraseña igual que la
+  pestaña "Ocultos" si hay una configurada), **"Rotacion"**, el menu de acciones en lote, y
+  **"Actualizar"** (vuelve a leer la carpeta del Workshop, por si suscribiste algo nuevo desde
+  Steam).
+
+### Ocultos con contraseña
+
+Puedes proteger el acceso a los wallpapers ocultos desde **Ajustes → "Proteger 'Ocultos' con
+contraseña..."**. Una vez puesta, hace falta introducirla tanto para entrar en la pestaña
+**Ocultos** como para activar la casilla **"Mostrar ocultos"** de la barra inferior — son los
+dos unicos sitios desde los que se pueden ver, y ambos piden la contraseña por igual (si
+solo se protegiera uno de los dos, el otro seria una forma trivial de saltarsela). Se pide
+cada vez, en cada sesion de la app; no se guarda ni se recuerda un rato. Si cierras la
+ventana estando en la pestaña Ocultos con contraseña puesta, al reabrir la app vuelve a
+"Biblioteca" en vez de restaurar esa pestaña directamente, por el mismo motivo.
+
+Se guarda con PBKDF2-HMAC-SHA256 + salt aleatorio en `hidden_lock.json` (permisos `0600`),
+nunca la contraseña en texto plano; aun asi no es proteccion criptografica seria — quien
+tenga acceso a tu carpeta de configuracion puede leer `hidden.json` directamente sin pasar
+por la contraseña. Es una cortina simple para que nadie la vea de pasada, no un cifrado real.
 
 ### Panel de detalle (derecha)
 
 Se despliega al seleccionar una tarjeta: vista previa grande, titulo, favorito, botones
-"Asignar a `<pantalla activa>`" / "Vista previa" / "Anadir a rotacion" / "Ocultar" /
-"Desuscribirse", y una seccion de informacion (tipo, categorias, clasificacion, fecha de
-descarga) con las etiquetas del wallpaper debajo.
+"Asignar a `<pantalla activa>`" / "Vista previa" / "Anadir a rotacion" / "Personalizar" /
+"Ocultar" / "Desuscribirse", y una seccion de informacion (tipo, categorias, clasificacion,
+fecha de descarga) con las etiquetas del wallpaper debajo.
+
+### Personalizar (propiedades del wallpaper)
+
+Equivalente a la pestaña "Customize" de Wallpaper Engine en Windows: muchos wallpapers del
+Workshop definen sus propias opciones (mostrar/ocultar un reloj, color de acento, velocidad
+de una animacion, activar/desactivar reacciones al raton, texto personalizado...). El boton
+"Personalizar" del panel de detalle lee esas opciones directamente del wallpaper con
+`linux-wallpaperengine --list-properties` y las muestra como casillas, sliders, listas
+desplegables, selector de color o campo de texto segun corresponda. Los cambios se guardan
+por wallpaper en `properties.json` y se pasan al motor como `--set-property clave=valor` la
+proxima vez que se aplica (si el wallpaper ya esta activo en alguna pantalla, se reaplica al
+momento). No todos los wallpapers definen propiedades personalizables — si no tiene ninguna,
+el dialogo lo indica. Que interaccion concreta hace cada propiedad (p.ej. si un elemento
+desaparece al pasar el raton por encima) depende de como el autor haya diseñado la escena;
+la app solo puede exponer y ajustar lo que el wallpaper ya trae definido, no añadir
+comportamientos nuevos que no existan en el.
+
+**Fijar una capa concreta.** Cuando un wallpaper tiene varias capas que se muestran/ocultan
+segun una propiedad personalizable, el dialogo "Personalizar" las separa en una seccion
+aparte, **CAPAS**, arriba del todo — son las mismas propiedades que antes aparecian
+mezcladas con el resto, solo que agrupadas y explicadas para este caso de uso. Hay dos formas
+en que Wallpaper Engine liga una capa a una propiedad, y la app soporta ambas:
+
+- **Interruptor simple**: `"visible": {"user": "clave", "value": true|false}` — una casilla
+  "Fijar siempre visible" (visto en los pares de video del efecto "xray" de Eclipse, o en
+  variantes dia/noche que se activan con un booleano independiente por capa).
+- **Grupo de opciones (combo)**: `"visible": {"user": {"condition": "N", "name": "clave"},
+  ...}` — varias capas distintas comparten una unica propiedad tipo lista desplegable, cada
+  una ligada a un valor concreto (p.ej. un wallpaper de Azur Lane con una propiedad "efecto
+  climatico" que alterna entre capas de cerezo/nieve/lluvia/lluvia intensa). Estas se
+  muestran como botones de opcion (radio): solo se puede fijar una a la vez, igual que
+  decide el propio combo internamente.
+
+Si dos capas son mutuamente excluyentes segun la logica interna del wallpaper (p.ej. un
+script que solo deja una activa a la vez incluso si ambas casillas estan marcadas), fijar
+ambas puede no comportarse como se espera — eso depende de como el autor programo esa logica,
+no de la app.
 
 ### Buscar en el Workshop
 
@@ -202,6 +262,99 @@ wallpaper, `wallpaperengine-apply` vigila el proceso durante unos segundos: si m
 de esas señales tipicas, guarda el id en `known_bad.json` y la app lo marca como
 "[⚠ Fallo conocido]" tanto en la lista local como en los resultados del Workshop. Si vuelves
 a probar ese mismo id y esta vez no crashea, la marca se quita sola.
+
+Cuando el wallpaper esta marcado, el panel de detalle muestra ademas un boton **"Reparar
+fallo conocido"**. Investigando un caso real (crash con `[json.exception.type_error.302]
+type must be number, but is string`, depurado con gdb hasta el codigo fuente de
+`linux-wallpaperengine`) se confirmo que la causa era la propiedad `padding` de los objetos
+de texto: algunos wallpapers la guardan como vector de dos componentes
+(`"32.00000 32.00000"`, horizontal/vertical, igual que `scale` o `size`), pero el motor de
+Linux solo soporta ahi un numero simple, y revienta al intentar leerla como tal. El boton
+"Reparar" hace una copia de seguridad de `scene.pkg` (`scene.pkg.bak_original`, solo la
+primera vez) y corrige ese campo en el sitio. No es un arreglo universal para cualquier
+crash — solo cubre este patron concreto — pero cuando aplica, deja el wallpaper
+utilizable sin depender de que el autor original lo actualice.
+
+El menu de "Acciones en lote" (icono `⋮` de la barra inferior) tiene ademas **"Reparar
+toda la biblioteca"**: revisa TODOS los wallpapers descargados (no solo los que ya se
+hayan marcado como fallo conocido al intentarlos, por si alguno tiene el mismo problema y
+todavia no se ha probado) y repara automaticamente los que encuentre, con el mismo
+respaldo automatico por wallpaper. Se ejecuta en segundo plano (no bloquea la ventana) y
+al terminar muestra cuantos de cuantos revisados se han corregido. Es la forma recomendada
+de arreglar de golpe todos los wallpapers afectados por este patron concreto, incluidos los
+que usan efectos interactivos con el raton o reactivos al audio — la reparacion no depende
+del tipo de wallpaper, solo de si tiene ese campo mal formado.
+
+Ademas, esta misma reparacion se intenta **automaticamente** justo despues de cada descarga
+hecha desde la ventana "Workshop" de la app (antes de que llegues a probar el wallpaper por
+primera vez), asi que en la mayoria de los casos ni siquiera hace falta ver el crash una vez
+para que se corrija. Si el wallpaper ya se suscribio/descargo por fuera de la app (por
+ejemplo, directamente desde el cliente de Steam), usa "Reparar toda la biblioteca" o el
+boton individual "Reparar fallo conocido" tras el primer intento fallido.
+
+**Efectos interactivos "xray" y "cursorripple" rotos por assets que faltan.** Estos dos
+efectos nativos del motor (el genero "revelar al pasar el raton") pertenecen al grupo
+"interactive" de Wallpaper Engine, y en esta version de `linux-wallpaperengine` para Linux
+les faltan sus archivos (`materials/`, `shaders/*.frag/.vert`) en los assets globales del
+motor — comprobado con los 3 efectos de ese grupo. La mayoria de wallpapers que los usan los
+empaquetan ellos mismos dentro de su propio `scene.pkg` (asi no dependen de los assets
+globales), pero si alguno no lo hace, falla con
+`Cannot find requested file in any of the mountpoints: [...]xray.json`. El reparador
+detecta esto (busca `effects/xray/effect.json` o `effects/cursorripple/effect.json`
+referenciado en la escena sin sus shaders empaquetados) y copia dentro del `.pkg` los
+archivos REALES de Wallpaper Engine — extraidos de wallpapers del Workshop que si los
+traian consigo y verificados en este sistema (revisando el log de un proceso en produccion
+real para "xray", y con una carga aislada para "cursorripple": ningun error de compilacion
+GLSL) — guardados como plantilla en `wpelib/vendor_effects/`. No es una reimplementacion
+propia del efecto, son los shaders originales del propio motor. Esta reparacion forma parte
+del mismo `attempt_repair()`, asi que se aplica igual desde "Reparar fallo conocido",
+"Reparar toda la biblioteca" y la reparacion automatica al descargar.
+
+**Limitacion conocida sin arreglo todavia**: existe un segundo patron de incompatibilidad,
+distinto al de `padding`, en el que `general.orthogonalprojection` viene como `null` en vez
+de `{width, height}` (visto en "Wuhu Island" y "Cat with headphones on the roof" en pruebas
+reales). A diferencia del bug de `padding`, rellenar ese campo con un valor por defecto evita
+el error de carga pero **no** arregla el renderizado: la escena se queda en negro/gris,
+probablemente porque esas escenas usan camara en perspectiva y no deberian depender de una
+proyeccion ortografica en absoluto. Por eso este patron NO esta incluido en el reparador
+automatico (daria una falsa sensacion de "arreglado" sin estarlo de verdad) — necesitaria
+soporte real en el codigo del motor, no un parche de datos.
+
+### Audio de los wallpapers
+
+Por defecto los wallpapers se lanzan silenciados (mismo comportamiento que siempre ha
+tenido la app). Cada pantalla tiene ahora, junto al combo "Escalado", un boton de altavoz y
+un deslizador de volumen independientes: al activar el altavoz, esa pantalla deja de pasar
+`--silent` al motor y pasa `--volume N` en su lugar, asi que el sonido o musica propios del
+wallpaper (si los tiene) se reproducen. Los wallpapers con visualizador de audio (barras,
+anillos que reaccionan a la musica...) reaccionan al audio del sistema independientemente de
+si esa pantalla esta silenciada o no — `--silent` solo corta el sonido que el propio
+wallpaper generaria, no la lectura del audio del sistema que usan esos efectos, que
+`linux-wallpaperengine` controla con un flag totalmente distinto (`--no-audio-processing`)
+que esta app nunca activa. El ajuste se guarda por pantalla en `audio.json`.
+
+### Velocidad de reproduccion (x1.5 / x2 / x3 / x4)
+
+Junto al combo "Escalado" y el control de audio hay un combo **"Velocidad"** para wallpapers
+de video. Esto **no** es una funcion nativa de `linux-wallpaperengine` — el motor usa libmpv
+para reproducir video pero nunca expone un flag para controlar su velocidad. Para poder
+ofrecer esto se ha parcheado y recompilado el motor desde el codigo fuente
+(github.com/Almamu/linux-wallpaperengine): se añadio un flag `--speed N` que llama a
+`mpv_set_property(handle, "speed", MPV_FORMAT_DOUBLE, &N)`, siguiendo exactamente el mismo
+patron que el motor ya usa para `--volume` (`GLPlayer::setVolume`). Verificado leyendo de
+vuelta el valor con `mpv_get_property` en el propio proceso real: con `--speed 2.5` mpv
+confirma internamente `speed=2.5`.
+
+El binario y la libreria instalados en `/opt/linux-wallpaperengine/` fueron sustituidos por
+esta version parcheada (con backup de los originales junto a ellos,
+`*.bak_original`); si se reinstala el paquete `linux-wallpaperengine-git` de AUR, este flag
+desaparecera hasta volver a aplicar el parche (el codigo fuente parcheado, con submodulos
+inicializados, quedo clonado durante esta sesion). Como es un flag nuevo del motor y no algo
+que dependa del wallpaper, solo tiene efecto en wallpapers de tipo Video (o con video
+incrustado dentro de una escena); en un wallpaper sin ningun video no hace nada. El ajuste se
+guarda por pantalla en `speed.json`, y solo se pasa `--speed` al motor cuando es distinto de
+1.0 (por si en el futuro se reinstala una version del motor sin el parche, no romper el resto
+de argumentos).
 
 ### Rotacion automatica de wallpapers
 
@@ -280,8 +433,18 @@ Todo el estado vive en `~/.config/wallpaperengine-picker/`:
   proceso `linux-wallpaperengine` de esa pantalla (util para ver por que un wallpaper concreto
   no carga o hace crashear el motor).
 - `hidden.json`: lista de ids de wallpapers ocultos.
-- `scaling.json`: modo de escalado por pantalla, `{ "PANTALLA": "fill"|"fit"|"stretch"|"default" }`.
-  "fill" (recorta para rellenar) si una pantalla no tiene entrada.
+- `hidden_lock.json`: si existe, protege la pestaña "Ocultos" y la casilla "Mostrar ocultos"
+  con contraseña — `{"salt": hex, "hash": hex}` (PBKDF2-HMAC-SHA256), nunca la contraseña en
+  si. Sin este fichero, ninguno de los dos pide nada (comportamiento de siempre).
+- `scaling.json`: modo de escalado por pantalla, `{ "PANTALLA": "fill"|"fit"|"stretch"|"default" }`
+  ("fill", recorta para rellenar, si una pantalla no tiene entrada).
+- `properties.json`: overrides guardados del panel "Personalizar", por wallpaper:
+  `{ "id_wallpaper": { "clave_propiedad": "valor", ... } }`.
+- `audio.json`: audio por pantalla, `{ "PANTALLA": {"muted": bool, "volume": 0-100} }`
+  (silenciado si una pantalla no tiene entrada).
+- `speed.json`: velocidad de reproduccion de video por pantalla, `{ "PANTALLA": 1.0-4.0 }`
+  (1.0/normal si una pantalla no tiene entrada). Requiere el motor parcheado, ver la seccion
+  "Velocidad de reproduccion" mas arriba.
 - `favorites.json`: lista de ids marcados con favorito (compartida entre la biblioteca local
   y los resultados del Workshop).
 - `recents.json`: ids aplicados recientemente, mas reciente primero (hasta 100), para la
@@ -307,6 +470,22 @@ problema, se regeneran solas).
   C++ no capturadas al parsear un `scene.json` incompatible); con procesos separados, solo se
   cae la pantalla afectada y las demas siguen funcionando. Cambiar el wallpaper de una
   pantalla solo reinicia el proceso de esa pantalla, sin tocar las demas.
+- El reinicio del proceso de una pantalla esta protegido con `flock` por pantalla
+  (`~/.config/wallpaperengine-picker/lock_PANTALLA.lock`). Sin esto, dos llamadas a
+  `wallpaperengine-apply` casi simultaneas para la misma pantalla (p.ej. mover rapido el
+  deslizador de volumen mientras la rotacion automatica tambien actua) podian leer el mismo
+  PID "viejo" antes de que la otra lo actualizara y acabar con varios procesos
+  `linux-wallpaperengine` vivos a la vez en la misma pantalla, agotando la VRAM
+  (`CUDA_ERROR_OUT_OF_MEMORY`) — visto en produccion real, confirmado y corregido.
+- La deteccion de crashes (`known_bad.json`) espera de verdad (`wait`) a que el proceso de
+  cada pantalla termine y mira su codigo de salida real, en vez de solo buscar frases como
+  "terminate called" en el log. Esto detecta tambien segfaults silenciosos que no imprimen
+  ningun mensaje reconocible (visto en produccion: un wallpaper moria con
+  `Segmentation fault` real, exit code 139, sin dejar ninguna traza de texto en el log, asi
+  que el chequeo anterior nunca lo habria marcado). Un cambio deliberado de wallpaper mata al
+  proceso viejo con `SIGTERM` (tambien un "codigo de salida por señal"), pero eso NO se marca
+  como fallo — se distingue comprobando si el pidfile de esa pantalla sigue apuntando a ese
+  proceso en el momento en que muere; si ya no coincide, fue un cambio a proposito.
 - El escalado es configurable por pantalla (combo "Escalado", por defecto "Rellenar"); el
   `clamp` se deja fijo en `border` siempre. Si un wallpaper en concreto se ve mal incluso con
   "Ajustar", puede deberse a que la escena en si no esta pensada para tu resolucion/aspecto.

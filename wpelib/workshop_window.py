@@ -16,6 +16,7 @@ from .steam_api import (
     is_already_downloaded,
 )
 from .ui import icon_button, open_in_steam, open_workshop_browse, CheckListButton, WallpaperCard
+from .repair import attempt_repair
 
 
 class WorkshopBrowserWindow(Gtk.Window):
@@ -564,9 +565,21 @@ class WorkshopBrowserWindow(Gtk.Window):
 
     def _download_thread(self, wid):
         ok = download_workshop_item(wid, lambda line: GLib.idle_add(self.append_log, line))
-        GLib.idle_add(self._download_done, wid, ok)
 
-    def _download_done(self, wid, steamcmd_ok):
+        # Reparacion automatica: si el wallpaper recien descargado tiene alguna de las
+        # incompatibilidades conocidas del formato .pkg (ver wpelib/repair.py), se corrige
+        # aqui mismo antes de que el usuario llegue a probarlo, sin necesidad de esperar a
+        # que crashee primero. Se hace en este hilo (no en el de la interfaz) porque parsear
+        # un scene.pkg grande puede tardar y no debe congelar la ventana.
+        repaired, repair_msg = False, None
+        if ok:
+            repaired, repair_msg = attempt_repair(wid)
+            if repaired:
+                GLib.idle_add(self.append_log, f"--- Reparacion automatica: {repair_msg} ---\n")
+
+        GLib.idle_add(self._download_done, wid, ok, repaired, repair_msg)
+
+    def _download_done(self, wid, steamcmd_ok, repaired=False, repair_msg=None):
         title = self.title_by_id.get(wid, wid)
         verified, detail = verify_workshop_download(wid) if steamcmd_ok else (False, None)
 
@@ -578,9 +591,10 @@ class WorkshopBrowserWindow(Gtk.Window):
                 card.set_badge("Ya la tienes")
             if wid == self._selected_wid:
                 self.detail_download_btn.set_sensitive(False)
+            extra = f"\n\nSe detecto y corrigio automaticamente una incompatibilidad conocida: {repair_msg}" if repaired else ""
             self.show_result_dialog(
                 Gtk.MessageType.INFO, "Descarga completada",
-                f"'{title}' se descargo correctamente y ya esta disponible en la lista principal.",
+                f"'{title}' se descargo correctamente y ya esta disponible en la lista principal.{extra}",
             )
             if self.on_downloaded:
                 self.on_downloaded()

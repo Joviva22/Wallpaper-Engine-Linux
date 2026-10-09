@@ -1,9 +1,11 @@
 """Configuracion, deteccion de la biblioteca de Steam y estado persistido en
 disco: wallpapers ocultos, listas de rotacion, wallpapers con fallos
 conocidos, y el escaneo de la biblioteca local ya descargada."""
+import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 
@@ -13,6 +15,7 @@ APPID = "431960"
 CONF_DIR = os.path.expanduser("~/.config/wallpaperengine-picker")
 CONFIG_FILE = os.path.join(CONF_DIR, "config.json")
 CURRENT_FILE = os.path.join(CONF_DIR, "current.json")
+HIDDEN_LOCK_FILE = os.path.join(CONF_DIR, "hidden_lock.json")
 HIDDEN_FILE = os.path.join(CONF_DIR, "hidden.json")
 FAVORITES_FILE = os.path.join(CONF_DIR, "favorites.json")
 RECENTS_FILE = os.path.join(CONF_DIR, "recents.json")
@@ -22,6 +25,12 @@ KNOWN_BAD_FILE = os.path.join(CONF_DIR, "known_bad.json")
 SCALING_FILE = os.path.join(CONF_DIR, "scaling.json")
 SCALING_MODES = ["fill", "fit", "stretch", "default"]
 DEFAULT_SCALING = "fill"
+PROPERTIES_FILE = os.path.join(CONF_DIR, "properties.json")
+AUDIO_FILE = os.path.join(CONF_DIR, "audio.json")
+DEFAULT_VOLUME = 50
+SPEED_FILE = os.path.join(CONF_DIR, "speed.json")
+SPEED_OPTIONS = [1.0, 1.5, 2.0, 3.0, 4.0]
+DEFAULT_SPEED = 1.0
 MAX_RECENTS = 100
 CACHE_DIR = os.path.expanduser("~/.cache/wallpaperengine-picker/thumbs_v5")
 WORKSHOP_THUMB_CACHE = os.path.expanduser("~/.cache/wallpaperengine-picker/workshop_thumbs")
@@ -156,6 +165,45 @@ def save_hidden_ids(ids):
         json.dump(sorted(ids), f, indent=2)
 
 
+def has_hidden_password():
+    return os.path.isfile(HIDDEN_LOCK_FILE)
+
+
+def set_hidden_password(password):
+    """Protege la pestaña 'Ocultos' con una contraseña. Se guarda con
+    PBKDF2-HMAC-SHA256 + salt aleatorio, nunca en texto plano — no es proteccion
+    criptografica de verdad (quien tenga acceso al disco puede leer hidden.json
+    igualmente), solo evita que alguien la vea de pasada sin querer."""
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 200_000).hex()
+    os.makedirs(CONF_DIR, exist_ok=True)
+    with open(HIDDEN_LOCK_FILE, "w", encoding="utf-8") as f:
+        json.dump({"salt": salt, "hash": digest}, f, indent=2)
+    try:
+        os.chmod(HIDDEN_LOCK_FILE, 0o600)
+    except OSError:
+        pass
+
+
+def clear_hidden_password():
+    if os.path.isfile(HIDDEN_LOCK_FILE):
+        os.remove(HIDDEN_LOCK_FILE)
+
+
+def verify_hidden_password(password):
+    if not os.path.isfile(HIDDEN_LOCK_FILE):
+        return True
+    try:
+        with open(HIDDEN_LOCK_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(data["salt"]), 200_000
+        ).hex()
+        return secrets.compare_digest(digest, data["hash"])
+    except Exception:
+        return False
+
+
 def load_favorite_ids():
     if os.path.isfile(FAVORITES_FILE):
         try:
@@ -242,6 +290,68 @@ def save_scaling(data):
         json.dump(data, f, indent=2)
 
 
+def load_properties():
+    """Overrides de propiedades personalizables guardados por wallpaper,
+    { "wallpaper_id": { "propkey": "valor" } } (ver wpelib/properties.py)."""
+    if os.path.isfile(PROPERTIES_FILE):
+        try:
+            with open(PROPERTIES_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_properties(data):
+    os.makedirs(CONF_DIR, exist_ok=True)
+    with open(PROPERTIES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def load_audio():
+    """Configuracion de audio guardada por pantalla,
+    { "PANTALLA": {"muted": bool, "volume": 0-100} }. Silenciado por defecto
+    (mismo comportamiento que antes de que esto existiera): --silent solo afecta
+    al sonido PROPIO del wallpaper (video/musica incrustada), no a que reaccione
+    al audio del sistema (eso lo controla --no-audio-processing, que esta app
+    nunca pasa, asi que la reactividad al audio funciona independientemente de
+    si esta silenciado o no)."""
+    if os.path.isfile(AUDIO_FILE):
+        try:
+            with open(AUDIO_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_audio(data):
+    os.makedirs(CONF_DIR, exist_ok=True)
+    with open(AUDIO_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def load_speed():
+    """Velocidad de reproduccion guardada por pantalla, { "PANTALLA": 1.0-4.0 }.
+    Requiere el flag --speed de linux-wallpaperengine (anadido en esta sesion,
+    parchea GLPlayer para llamar mpv_set_property(handle, "speed", ...) — solo
+    afecta a wallpapers de tipo Video o con video incrustado; en una escena sin
+    video no tiene ningun efecto. 1.0 (normal) si no hay nada guardado."""
+    if os.path.isfile(SPEED_FILE):
+        try:
+            with open(SPEED_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_speed(data):
+    os.makedirs(CONF_DIR, exist_ok=True)
+    with open(SPEED_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
 def unsubscribe_workshop_item(wid):
     """Borra el contenido local del wallpaper y lo quita de cualquier lista de
     rotacion. No es un unsubscribe real en Steam (eso requiere el cliente
@@ -268,6 +378,11 @@ def unsubscribe_workshop_item(wid):
     if wid in favorites:
         favorites.discard(wid)
         save_favorite_ids(favorites)
+
+    properties = load_properties()
+    if wid in properties:
+        del properties[wid]
+        save_properties(properties)
 
 
 def build_thumb(preview_path, dest_path):
