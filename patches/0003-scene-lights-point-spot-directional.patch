@@ -1,0 +1,362 @@
+diff --git a/src/WallpaperEngine/Data/Model/Object.h b/src/WallpaperEngine/Data/Model/Object.h
+index c346aaba..25425e7c 100644
+--- a/src/WallpaperEngine/Data/Model/Object.h
++++ b/src/WallpaperEngine/Data/Model/Object.h
+@@ -621,4 +621,32 @@ public:
+ 	Object (std::move (data)), TextData (std::move (textData)) { };
+     ~Text () override = default;
+ };
++
++/**
++ * Scene light (scene.json objects with a "light" key). Kinds seen in the wild: "point",
++ * "lpoint", "lspot", "ltube" and "ldirectional".
++ */
++struct LightData {
++    std::string kind;
++    /** Linear RGB color */
++    UserSettingUniquePtr color;
++    UserSettingUniquePtr intensity;
++    /** Distance at which the light fades to nothing, in scene units */
++    UserSettingUniquePtr radius;
++    /** Euler angles in radians (direction for spot and directional lights) */
++    UserSettingUniquePtr angles;
++    UserSettingUniquePtr visible;
++    /** Falloff exponent (defaults to 1) */
++    float exponent;
++    /** Spot cone angles in degrees */
++    float innerCone;
++    float outerCone;
++};
++
++class Light : public Object, public LightData {
++public:
++    explicit Light (ObjectData data, LightData lightData) noexcept :
++	Object (std::move (data)), LightData (std::move (lightData)) { };
++    ~Light () override = default;
++};
+ } // namespace WallpaperEngine::Data::Model
+diff --git a/src/WallpaperEngine/Data/Model/Types.h b/src/WallpaperEngine/Data/Model/Types.h
+index 2d39d3fa..858a4f60 100644
+--- a/src/WallpaperEngine/Data/Model/Types.h
++++ b/src/WallpaperEngine/Data/Model/Types.h
+@@ -20,6 +20,7 @@ struct ImageEffect;
+ struct ImageEffectPassOverride;
+ class Particle;
+ class Text;
++class Light;
+ class DynamicValue;
+ class Property;
+ class PropertySlider;
+@@ -51,6 +52,7 @@ using SoundUniquePtr = std::unique_ptr<Sound>;
+ using ImageUniquePtr = std::unique_ptr<Image>;
+ using ParticleUniquePtr = std::unique_ptr<Particle>;
+ using TextUniquePtr = std::unique_ptr<Text>;
++using LightUniquePtr = std::unique_ptr<Light>;
+ using MaterialUniquePtr = std::unique_ptr<Material>;
+ using MaterialPassUniquePtr = std::unique_ptr<MaterialPass>;
+ using EffectUniquePtr = std::unique_ptr<Effect>;
+diff --git a/src/WallpaperEngine/Data/Parsers/ObjectParser.cpp b/src/WallpaperEngine/Data/Parsers/ObjectParser.cpp
+index 4e35f5a5..55e1a84e 100644
+--- a/src/WallpaperEngine/Data/Parsers/ObjectParser.cpp
++++ b/src/WallpaperEngine/Data/Parsers/ObjectParser.cpp
+@@ -73,8 +73,8 @@ ObjectUniquePtr ObjectParser::parse (const JSON& it, const Project& project) {
+ 	return parseParticle (it, project, std::move (basedata));
+     } else if (textIt != it.end ()) {
+ 	return parseText (it, project, std::move (basedata));
+-    } else if (lightIt != it.end ()) {
+-	sLog.error ("Light objects are not supported yet");
++    } else if (lightIt != it.end () && lightIt->is_string ()) {
++	return parseLight (it, project, std::move (basedata), lightIt->get<std::string> ());
+     } else if (shapeIt != it.end ()) {
+ 	sLog.error ("VolumeLight objects are not supported yet");
+     } else {
+@@ -141,6 +141,24 @@ TextUniquePtr ObjectParser::parseText (const JSON& it, const Project& project, O
+     );
+ }
+ 
++LightUniquePtr
++ObjectParser::parseLight (const JSON& it, const Project& project, ObjectData base, const std::string& kind) {
++    return std::make_unique<Light> (
++	std::move (base),
++	LightData {
++	    .kind = kind,
++	    .color = it.color ("color", project.properties, Builders::ColorBuilder::White),
++	    .intensity = it.user ("intensity", project.properties, 1.0f),
++	    .radius = it.user ("radius", project.properties, 1000.0f),
++	    .angles = it.user ("angles", project.properties, glm::vec3 (0.0f)),
++	    .visible = it.user ("visible", project.properties, true),
++	    .exponent = it.optional ("exponent", 1.0f),
++	    .innerCone = it.optional ("innercone", 0.0f),
++	    .outerCone = it.optional ("outercone", 0.0f),
++	}
++    );
++}
++
+ ImageUniquePtr
+ ObjectParser::parseImage (const JSON& it, const Project& project, ObjectData base, const std::string& image) {
+     const auto& properties = project.properties;
+diff --git a/src/WallpaperEngine/Data/Parsers/ObjectParser.h b/src/WallpaperEngine/Data/Parsers/ObjectParser.h
+index 7e1c81e5..c033d57f 100644
+--- a/src/WallpaperEngine/Data/Parsers/ObjectParser.h
++++ b/src/WallpaperEngine/Data/Parsers/ObjectParser.h
+@@ -24,6 +24,7 @@ private:
+     parseImage (const JSON& it, const Project& project, ObjectData base, const std::string& image);
+     static ParticleUniquePtr parseParticle (const JSON& it, const Project& project, ObjectData base);
+     static TextUniquePtr parseText (const JSON& it, const Project& project, ObjectData base);
++    static LightUniquePtr parseLight (const JSON& it, const Project& project, ObjectData base, const std::string& kind);
+     static std::vector<ImageEffectUniquePtr> parseEffects (const JSON& it, const Project& project);
+     static ImageEffectUniquePtr parseEffect (const JSON& it, const Project& project);
+     static std::vector<ImageEffectPassOverrideUniquePtr>
+diff --git a/src/WallpaperEngine/Render/Objects/Effects/CPass.cpp b/src/WallpaperEngine/Render/Objects/Effects/CPass.cpp
+index e93c2937..35b8cabf 100644
+--- a/src/WallpaperEngine/Render/Objects/Effects/CPass.cpp
++++ b/src/WallpaperEngine/Render/Objects/Effects/CPass.cpp
+@@ -1,7 +1,13 @@
+ #include "CPass.h"
++#include <algorithm>
++#include <cmath>
++#include <optional>
+ #include <sstream>
+ #include <utility>
+ 
++#include <glm/gtc/matrix_transform.hpp>
++#include "WallpaperEngine/Data/Model/Object.h"
++
+ #include "WallpaperEngine/Render/Helpers/ContextAware.h"
+ 
+ #include "WallpaperEngine/Data/Model/Effect.h"
+@@ -845,6 +851,104 @@ void CPass::setupTextureUniforms () {
+     this->addUniform ("g_Texture0Resolution", &this->m_texture0Resolution);
+ }
+ 
++namespace {
++constexpr int kMaxSceneLights = 4;
++
++/**
++ * World position of a light: its origin plus the origins of its parent groups
++ * (rotation and scale of the parents are ignored; lights are rarely nested that deeply).
++ */
++glm::vec3 lightWorldPosition (const WallpaperEngine::Data::Model::ObjectList& objects, const WallpaperEngine::Data::Model::Object& light) {
++    glm::vec3 position = light.origin->value->getVec3 ();
++    std::optional<int> parent = light.parent;
++
++    for (int depth = 0; parent.has_value () && depth < 16; depth++) {
++	const WallpaperEngine::Data::Model::Object* found = nullptr;
++
++	for (const auto& candidate : objects) {
++	    if (candidate->id == *parent) {
++		found = candidate.get ();
++		break;
++	    }
++	}
++
++	if (found == nullptr) {
++	    break;
++	}
++
++	position += found->origin->value->getVec3 ();
++	parent = found->parent;
++    }
++
++    return position;
++}
++
++/** Direction a spot/directional light points to, from its euler angles (radians). */
++glm::vec3 lightDirection (const glm::vec3& angles) {
++    const glm::mat4 rotation = glm::rotate (
++	glm::rotate (glm::rotate (glm::mat4 (1.0f), angles.z, glm::vec3 (0, 0, 1)), angles.y, glm::vec3 (0, 1, 0)),
++	angles.x, glm::vec3 (1, 0, 0)
++    );
++
++    return glm::normalize (glm::vec3 (rotation * glm::vec4 (0.0f, 0.0f, -1.0f, 0.0f)));
++}
++} // namespace
++
++void CPass::setupLightUniforms () {
++    using namespace WallpaperEngine::Data::Model;
++
++    const auto& objects = this->m_renderable.getScene ().getScene ().objects;
++    int slot = 0;
++
++    for (const auto& object : objects) {
++	if (slot >= kMaxSceneLights) {
++	    break;
++	}
++
++	if (!object->is<Light> ()) {
++	    continue;
++	}
++
++	const auto* light = object->as<Light> ();
++
++	if (!light->visible->value->getBool ()) {
++	    continue;
++	}
++
++	// 1 = point (lpoint and ltube are approximated as points), 2 = spot, 3 = directional
++	float kind = 1.0f;
++
++	if (light->kind == "lspot") {
++	    kind = 2.0f;
++	} else if (light->kind == "ldirectional") {
++	    kind = 3.0f;
++	}
++
++	const glm::vec3 position = lightWorldPosition (objects, *light);
++	const glm::vec3 color = light->color->value->getVec3 () * light->intensity->value->getFloat ();
++	const glm::vec3 direction = lightDirection (light->angles->value->getVec3 ());
++	const float innerCos = std::cos (glm::radians (light->innerCone));
++	const float outerCos = std::cos (glm::radians (std::max (light->outerCone, light->innerCone)));
++	const std::string prefix = "g_Light" + std::to_string (slot);
++
++	this->addUniform (prefix + "_Position", glm::vec4 (position, light->radius->value->getFloat ()));
++	this->addUniform (prefix + "_Color", glm::vec4 (color, kind));
++	this->addUniform (prefix + "_Direction", glm::vec4 (direction, std::max (light->exponent, 1.0f)));
++	this->addUniform (prefix + "_Cone", glm::vec4 (innerCos, outerCos, 0.0f, 0.0f));
++	slot++;
++    }
++
++    // unused slots must contribute nothing
++    for (; slot < kMaxSceneLights; slot++) {
++	const std::string prefix = "g_Light" + std::to_string (slot);
++
++	this->addUniform (prefix + "_Position", glm::vec4 (0.0f, 0.0f, 0.0f, 1.0f));
++	this->addUniform (prefix + "_Color", glm::vec4 (0.0f));
++	this->addUniform (prefix + "_Direction", glm::vec4 (0.0f, 0.0f, -1.0f, 1.0f));
++	this->addUniform (prefix + "_Cone", glm::vec4 (1.0f, 1.0f, 0.0f, 0.0f));
++    }
++}
++
+ void CPass::setupUniforms () {
+     this->setupTextureUniforms ();
+ 
+@@ -856,6 +960,7 @@ void CPass::setupUniforms () {
+     // lighting variables
+     this->addUniform ("g_LightAmbientColor", sceneData.colors.ambient->value->getVec3 ());
+     this->addUniform ("g_LightSkylightColor", sceneData.colors.skylight->value->getVec3 ());
++    this->setupLightUniforms ();
+     // register variables like brightness and alpha with some default value
+     this->addUniform ("g_Brightness", renderable.getBrightness ());
+     this->addUniform ("g_UserAlpha", renderable.getUserAlpha ());
+diff --git a/src/WallpaperEngine/Render/Objects/Effects/CPass.h b/src/WallpaperEngine/Render/Objects/Effects/CPass.h
+index 4c3ab16b..2bcd21a6 100644
+--- a/src/WallpaperEngine/Render/Objects/Effects/CPass.h
++++ b/src/WallpaperEngine/Render/Objects/Effects/CPass.h
+@@ -126,6 +126,7 @@ private:
+     void setupShaders ();
+     void setupShaderVariables ();
+     void setupUniforms ();
++    void setupLightUniforms ();
+     void setupTextureUniforms ();
+     void setupAttributes ();
+     void addAttribute (const std::string& name, GLint type, GLint elements, const GLuint* value);
+diff --git a/src/WallpaperEngine/Render/Shaders/ShaderUnit.cpp b/src/WallpaperEngine/Render/Shaders/ShaderUnit.cpp
+index fcc03fcd..8732d1eb 100644
+--- a/src/WallpaperEngine/Render/Shaders/ShaderUnit.cpp
++++ b/src/WallpaperEngine/Render/Shaders/ShaderUnit.cpp
+@@ -365,15 +365,96 @@ std::string ShaderUnit::resolveRequireModule (const std::string& moduleName) con
+ 
+ std::string ShaderUnit::generateLightingV1 () const {
+     // PerformLighting_V1 is dynamically generated by Wallpaper Engine based on the scene's
+-    // light sources. Since linux-wallpaperengine does not yet support light objects, we
+-    // generate a stub that returns no dynamic light contribution.
+-    return "// begin of generated module LightingV1\n"
+-	   "vec3 PerformLighting_V1(vec3 worldPos, vec3 albedo, vec3 normal, vec3 viewDir,\n"
+-	   "    vec3 specularTint, vec3 baseReflectance, float roughness, float metallic)\n"
+-	   "{\n"
+-	   "    return vec3(0.0);\n"
+-	   "}\n"
+-	   "// end of generated module LightingV1\n";
++    // light sources. Here the scene's lights (up to 4) are passed in as the uniforms
++    // g_LightN_Position (xyz, radius), g_LightN_Color (rgb * intensity, kind: 0 none, 1 point,
++    // 2 spot, 3 directional), g_LightN_Direction (xyz, falloff exponent) and g_LightN_Cone
++    // (cos inner, cos outer), filled by CPass::setupLightUniforms.
++    std::string code = "// begin of generated module LightingV1\n";
++
++    for (int i = 0; i < 4; i++) {
++	const std::string n = std::to_string (i);
++
++	code += "uniform vec4 g_Light" + n + "_Position;\n";
++	code += "uniform vec4 g_Light" + n + "_Color;\n";
++	code += "uniform vec4 g_Light" + n + "_Direction;\n";
++	code += "uniform vec4 g_Light" + n + "_Cone;\n";
++    }
++
++    // The PBR math below mirrors Wallpaper Engine's own assets/shaders/common_pbr_2.h
++    // (ComputePBRLightShadow / ComputePBRLightShadowInfinite) so lit materials match the
++    // original look, with the shadow factor fixed to 1 (shadows are not implemented).
++    code += "vec3 WpeFresnelSchlick(float lightTheta, vec3 baseReflectance)\n"
++	    "{\n"
++	    "    return baseReflectance + (vec3(1.0) - baseReflectance) * pow(max(1.0 - lightTheta, 0.001), 5.0);\n"
++	    "}\n"
++	    "float WpeDistributionGGX(vec3 N, vec3 H, float roughness)\n"
++	    "{\n"
++	    "    float rSqr = roughness * roughness;\n"
++	    "    float rSqr2 = rSqr * rSqr;\n"
++	    "    float NH = max(dot(N, H), 0.0);\n"
++	    "    float denominator = (NH * NH * (rSqr2 - 1.0) + 1.0);\n"
++	    "    return rSqr2 / (3.14159265 * denominator * denominator);\n"
++	    "}\n"
++	    "float WpeSchlickGGX(float NV, float roughness)\n"
++	    "{\n"
++	    "    float roughnessBase = roughness + 1.0;\n"
++	    "    float roughnessScaled = (roughnessBase * roughnessBase) / 8.0;\n"
++	    "    return NV / (NV * (1.0 - roughnessScaled) + roughnessScaled);\n"
++	    "}\n"
++	    "vec3 WpeShadePBR(vec3 N, vec3 L, vec3 V, vec3 albedo, vec3 radiance, vec3 specularTint,\n"
++	    "    vec3 baseReflectance, float roughness, float metallic)\n"
++	    "{\n"
++	    "    vec3 H = normalize(V + L);\n"
++	    "    float NDF = WpeDistributionGGX(N, H, roughness);\n"
++	    "    float G = WpeSchlickGGX(max(dot(N, V), 0.001), roughness) * WpeSchlickGGX(max(dot(N, L), 0.001), roughness);\n"
++	    "    vec3 F = WpeFresnelSchlick(max(dot(H, V), 0.0), baseReflectance);\n"
++	    "    float NL = max(dot(N, L), 0.0);\n"
++	    "    float denominator = 4.0 * max(dot(N, V), 0.0) * NL;\n"
++	    "    vec3 specular = (NDF * G * F) / max(denominator, 0.001);\n"
++	    "    vec3 diffuse = (1.0 - metallic) * (vec3(1.0) - F);\n"
++	    "    return (diffuse * albedo / 3.14159265 + specular * specularTint) * radiance * NL;\n"
++	    "}\n"
++	    "vec3 PerformSingleLight_V1(vec4 lightPosition, vec4 lightColor, vec4 lightDirection, vec4 lightCone,\n"
++	    "    vec3 worldPos, vec3 albedo, vec3 normal, vec3 viewDir,\n"
++	    "    vec3 specularTint, vec3 baseReflectance, float roughness, float metallic)\n"
++	    "{\n"
++	    "    if (lightColor.w < 0.5) {\n"
++	    "        return vec3(0.0);\n"
++	    "    }\n"
++	    "    if (lightColor.w > 2.5) {\n"
++	    "        return WpeShadePBR(normal, -normalize(lightDirection.xyz), viewDir, albedo, lightColor.rgb, specularTint,\n"
++	    "            baseReflectance, roughness, metallic);\n"
++	    "    }\n"
++	    "    vec3 delta = lightPosition.xyz - worldPos;\n"
++	    "    float distanceToLight = length(delta);\n"
++	    "    vec3 toLight = delta / max(distanceToLight, 0.0001);\n"
++	    "    float falloff = clamp(1.0 - distanceToLight / max(lightPosition.w, 0.001), 0.0, 1.0);\n"
++	    "    float attenuation = (falloff > 0.0) ? pow(falloff, lightDirection.w) : 0.0;\n"
++	    "    if (lightColor.w > 1.5) {\n"
++	    "        float cone = dot(-toLight, normalize(lightDirection.xyz));\n"
++	    "        attenuation *= smoothstep(lightCone.y, lightCone.x + 0.0001, cone);\n"
++	    "    }\n"
++	    "    return WpeShadePBR(normal, toLight, viewDir, albedo, lightColor.rgb * attenuation, specularTint,\n"
++	    "        baseReflectance, roughness, metallic);\n"
++	    "}\n"
++	    "vec3 PerformLighting_V1(vec3 worldPos, vec3 albedo, vec3 normal, vec3 viewDir,\n"
++	    "    vec3 specularTint, vec3 baseReflectance, float roughness, float metallic)\n"
++	    "{\n"
++	    "    vec3 total = vec3(0.0);\n";
++
++    for (int i = 0; i < 4; i++) {
++	const std::string n = std::to_string (i);
++
++	code += "    total += PerformSingleLight_V1(g_Light" + n + "_Position, g_Light" + n + "_Color, g_Light" + n
++	    + "_Direction, g_Light" + n + "_Cone, worldPos, albedo, normal, viewDir, specularTint, baseReflectance, "
++	      "roughness, metallic);\n";
++    }
++
++    code += "    return total;\n"
++	    "}\n"
++	    "// end of generated module LightingV1\n";
++
++    return code;
+ }
+ 
+ std::string ShaderUnit::applyLinkedVaryingCompatibility (std::string source) const {

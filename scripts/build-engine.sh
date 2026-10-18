@@ -5,6 +5,8 @@
 #
 # Parches incluidos:
 #   0001  wallpapers web se veian en negro (Almamu/linux-wallpaperengine#629)
+#   0002  --speed para escenas y video
+#   0003  luces de escena (point/lpoint/ltube como puntuales, lspot, ldirectional)
 #
 # Requisitos (Arch): git cmake sdl2 glm wayland-protocols xorg-xrandr lz4 ffmpeg mpv glfw
 # glew freeglut libpulse libcups at-spi2-core nss libxcomposite libxdamage nspr.
