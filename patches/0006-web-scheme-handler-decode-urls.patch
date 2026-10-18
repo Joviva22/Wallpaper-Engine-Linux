@@ -1,0 +1,18 @@
+diff --git a/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp b/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
+index 8f29be8c..f345f353 100644
+--- a/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
++++ b/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
+@@ -28,7 +28,12 @@ bool WPSchemeHandler::Open (CefRefPtr<CefRequest> request, bool& handle_request,
+     }
+ 
+     const std::string host = CefString (&parts.host);
+-    const std::string path = CefString (&parts.path);
++    // paths in the URL are percent-encoded ("Some%20Folder", UTF-8 sequences); assets are stored with
++    // their real names, so decode before looking them up
++    const std::string path = CefURIDecode (
++	CefString (&parts.path), true,
++	static_cast<cef_uri_unescape_rule_t> (UU_SPACES | UU_PATH_SEPARATORS | UU_URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS)
++    ).ToString ();
+ 
+     const std::string file = path.substr (1);
+ 

@@ -1,0 +1,136 @@
+diff --git a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+index 0c27e790..4af465de 100644
+--- a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
++++ b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+@@ -7,7 +7,9 @@
+ #include "WallpaperEngine/Data/Model/Project.h"
+ #include "WallpaperEngine/Data/Model/Property.h"
+ #include <nlohmann/json.hpp>
++#include <cmath>
+ #include <iomanip>
++#include "WallpaperEngine/Audio/Drivers/Recorders/PlaybackRecorder.h"
+ #include <sstream>
+ #include "WallpaperEngine/Data/Model/Wallpaper.h"
+ 
+@@ -135,6 +137,9 @@ void CWeb::renderFrame (const glm::ivec4& viewport) {
+     // ensure we render over the whole framebuffer
+     glViewport (0, 0, this->getWidth (), this->getHeight ());
+ 
++    // feed the audio spectrum to the page's wallpaperRegisterAudioListener callbacks
++    this->sendAudioSpectrum ();
++
+     // Cef processes all messages, including OnPaint, which renders frame
+     // If there is no OnPaint in message loop, we will not update(render) frame
+     //  This means some frames will not have OnPaint call in cef messageLoop
+@@ -146,6 +151,35 @@ void CWeb::renderFrame (const glm::ivec4& viewport) {
+     CefDoMessageLoopWork ();
+ }
+ 
++void CWeb::sendAudioSpectrum () {
++    if (!this->m_browser) {
++	return;
++    }
++
++    const auto frame = this->m_browser->GetMainFrame ();
++
++    if (!frame || !frame->IsValid ()) {
++	return;
++    }
++
++    const auto& recorder = this->getAudioContext ().getRecorder ();
++    std::ostringstream script;
++
++    // 128 values: 64 for the left channel followed by the same 64 for the right one (the recorder is mono)
++    script << "window.__wpeAudio&&window.__wpeAudio([";
++
++    for (int channel = 0; channel < 2; channel++) {
++	for (int i = 0; i < 64; i++) {
++	    const float value = std::isfinite (recorder.audio64[i]) ? recorder.audio64[i] : 0.0f;
++
++	    script << (channel + i > 0 ? "," : "") << value;
++	}
++    }
++
++    script << "]);";
++    frame->ExecuteJavaScript (script.str (), frame->GetURL (), 0);
++}
++
+ void CWeb::updateMouse (const glm::ivec4& viewport) {
+     // update virtual mouse position first
+     auto& input = this->getContext ().getInputContext ().getMouseInput ();
+diff --git a/src/WallpaperEngine/Render/Wallpapers/CWeb.h b/src/WallpaperEngine/Render/Wallpapers/CWeb.h
+index f27fd506..3a9217e0 100644
+--- a/src/WallpaperEngine/Render/Wallpapers/CWeb.h
++++ b/src/WallpaperEngine/Render/Wallpapers/CWeb.h
+@@ -39,6 +39,8 @@ public:
+ protected:
+     void renderFrame (const glm::ivec4& viewport) override;
+     void updateMouse (const glm::ivec4& viewport);
++    void sendAudioSpectrum ();
++
+     const Web& getWeb () const { return *this->getWallpaperData ().as<Web> (); }
+ 
+     friend class CWallpaper;
+diff --git a/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.cpp b/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.cpp
+index 7b107692..9a48692a 100644
+--- a/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.cpp
++++ b/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.cpp
+@@ -27,4 +27,33 @@ const WallpaperEngine::Application::WallpaperApplication& SubprocessApp::getAppl
+ 
+ const std::map<std::string, WPSchemeHandlerFactory*>& SubprocessApp::getHandlerFactories () const {
+     return this->m_handlerFactories;
+-}
+\ No newline at end of file
++}
++
++void SubprocessApp::OnContextCreated (
++    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context
++) {
++    // wallpapers register listeners with these functions while loading, so they have to exist before any
++    // script runs. The audio listener receives a Float32Array of 128 values (64 left + 64 right), fed every
++    // frame by the main process through window.__wpeAudio.
++    static const char* script
++	= "(function () {\n"
++	  "  if (window.__wpeApiInstalled) return;\n"
++	  "  window.__wpeApiInstalled = true;\n"
++	  "  var audioListeners = [];\n"
++	  "  window.wallpaperRegisterAudioListener = function (callback) {\n"
++	  "    if (typeof callback === 'function') audioListeners.push (callback);\n"
++	  "  };\n"
++	  "  window.__wpeAudio = function (values) {\n"
++	  "    var data = new Float32Array (values);\n"
++	  "    for (var i = 0; i < audioListeners.length; i++) {\n"
++	  "      try { audioListeners[i] (data); } catch (e) { console.error (e); }\n"
++	  "    }\n"
++	  "  };\n"
++	  "  var ignored = ['wallpaperRegisterMediaStatusListener', 'wallpaperRegisterMediaPropertiesListener',\n"
++	  "    'wallpaperRegisterMediaThumbnailListener', 'wallpaperRegisterMediaPlaybackListener',\n"
++	  "    'wallpaperRegisterMediaTimelineListener'];\n"
++	  "  ignored.forEach (function (name) { if (!window[name]) window[name] = function () {}; });\n"
++	  "})();\n";
++
++    frame->ExecuteJavaScript (script, frame->GetURL (), 0);
++}
+diff --git a/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.h b/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.h
+index 532f1f49..f9341742 100644
+--- a/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.h
++++ b/src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.h
+@@ -9,12 +9,17 @@ class WallpaperApplication;
+ }
+ 
+ namespace WallpaperEngine::WebBrowser::CEF {
+-class SubprocessApp : public CefApp {
++class SubprocessApp : public CefApp, public CefRenderProcessHandler {
+ public:
+     explicit SubprocessApp (WallpaperEngine::Application::WallpaperApplication& application);
+ 
+     void OnRegisterCustomSchemes (CefRawPtr<CefSchemeRegistrar> registrar) override;
+ 
++    [[nodiscard]] CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler () override { return this; }
++
++    /** Installs the Wallpaper Engine web API (audio and media listeners) before the page's scripts run */
++    void OnContextCreated (CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context) override;
++
+ protected:
+     const WallpaperEngine::Application::WallpaperApplication& getApplication () const;
+     const std::map<std::string, WPSchemeHandlerFactory*>& getHandlerFactories () const;
