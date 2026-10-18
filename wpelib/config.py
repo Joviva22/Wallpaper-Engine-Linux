@@ -73,6 +73,7 @@ def atomic_write_json(path, data):
     """Escribe JSON a un temporal en el mismo directorio y lo renombra encima
     (os.replace es atomico): un crash o una escritura concurrente nunca deja
     el archivo a medias."""
+    path = os.path.abspath(path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".tmp-")
     try:
