@@ -47,7 +47,8 @@ class ThumbTest(unittest.TestCase):
     def test_ok(self):
         path = steam_api.download_workshop_thumb("t_ok", self.base + "/ok")
         self.assertTrue(path and os.path.isfile(path))
-        self.assertEqual(Image.open(path).size, steam_api.THUMB_SIZE)
+        with Image.open(path) as img:
+            self.assertEqual(img.size, steam_api.THUMB_SIZE)
 
     def test_too_big_rejected_without_leftovers(self):
         self.assertIsNone(steam_api.download_workshop_thumb("t_big", self.base + "/big"))
