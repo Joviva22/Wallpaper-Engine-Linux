@@ -33,7 +33,7 @@ body.editing .slot.dragging { outline-color: #7cf0c9; }
 #gear:hover { transform: rotate(40deg); background: rgba(40, 70, 90, 0.85); }
 
 #panel {
-  position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 60;
+  position: fixed; top: 0; right: 0; bottom: 0; width: 440px; max-width: 92vw; z-index: 60;
   transform: translateX(105%); transition: transform 0.35s cubic-bezier(.2, .8, .2, 1);
   background: linear-gradient(160deg, rgba(14, 20, 31, 0.93), rgba(9, 13, 20, 0.95));
   border-left: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(16px);
@@ -215,3 +215,23 @@ body.previewing .slot { opacity: 0.25 !important; }
 .slot-card.open > .fold { margin-bottom: 10px; }
 .scroll-btns { position: absolute; right: 8px; bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
 .tile .badge { z-index: 2; }
+
+/* ---------- compact catalogue: more characters per screen, pager always visible ---------- */
+.grid.compact { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.grid.compact .tile { aspect-ratio: 1 / 1.1; border-radius: 10px; }
+.grid.compact .tile .label { font-size: 10px; padding: 12px 3px 3px; }
+.grid.compact .tile .badge { font-size: 9px; padding: 1px 5px; top: 3px; right: 3px; }
+.tile .variants {
+  position: absolute; left: 4px; top: 4px; font-size: 9px; padding: 1px 5px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6); color: #cfe8df; z-index: 2;
+}
+.tile.fav { box-shadow: inset 0 0 0 2px rgba(255, 210, 90, 0.8); }
+.sticky-head {
+  position: sticky; top: -4px; z-index: 5; padding: 6px 0 4px; margin: -4px 0 4px;
+  background: linear-gradient(rgba(12, 17, 26, 0.98) 80%, rgba(12, 17, 26, 0));
+}
+.sticky-head .pager { margin: 2px 0; flex-wrap: wrap; gap: 5px; }
+.sticky-head .count { text-align: center; margin: 2px 0 0; }
+.chips .chip { padding: 4px 6px; min-width: 24px; font-size: 11px; }
+.chip:disabled { opacity: 0.35; cursor: default; }
+#preview-actions .chips { margin: 0; }

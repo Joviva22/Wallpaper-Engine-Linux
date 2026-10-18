@@ -698,61 +698,104 @@
     return tile;
   }
 
-  var CATALOG_PAGE = 12;
+  var CATALOG_PAGE = 20;
   var catalogPage = 0;
   var catalogLetter = '';      // '' = all; '#' = names not starting with a letter
-  var catalogFilter = 'all';   // all | installed | missing
+  var catalogFilter = 'all';   // all | saved | missing | favs
+  var showVariants = false;    // false: one tile per character, its outfits are reached from the preview
   var catalogNav = null;
   var catalogLetters = null;
   var catalogFilters = null;
+  var favourites = {};
+  var FAV_KEY = 'nikkeStage.favs.v1';
+
+  try { favourites = JSON.parse(localStorage.getItem(FAV_KEY) || '{}') || {}; } catch (e) { favourites = {}; }
+  function toggleFavourite(code) {
+    if (favourites[code]) delete favourites[code]; else favourites[code] = 1;
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(favourites)); } catch (e) { /* ignore */ }
+  }
+
+  function baseOf(code) { return code.replace(/_\d\d$/, ''); }
+
+  function variantsOf(code) {
+    var base = baseOf(code);
+    var items = catalog.length ? catalog : installedCodes().map(function (c) { return { id: c, name: charName(c) }; });
+    return items.filter(function (item) { return baseOf(item.id) === base; });
+  }
 
   function firstLetter(name) {
     var letter = String(name || '').trim().charAt(0).toUpperCase();
     return /[A-Z]/.test(letter) ? letter : '#';
   }
 
-  function catalogItems() {
+  function catalogItems(ignoreLetter) {
     var installed = allChars();
     var query = catalogSearch ? catalogSearch.value.trim().toLowerCase() : '';
     var items = catalog.length ? catalog : installedCodes().map(function (c) { return { id: c, name: charName(c) }; });
+    var groups = {};
+    items.forEach(function (item) { var base = baseOf(item.id); groups[base] = (groups[base] || 0) + 1; });
     return items.filter(function (item) {
-      if (catalogLetter && firstLetter(item.name) !== catalogLetter) return false;
-      if (catalogFilter === 'installed' && !installed[item.id]) return false;
+      var isVariant = baseOf(item.id) !== item.id;
+      if (isVariant && !showVariants) return false;
+      if (!ignoreLetter && catalogLetter && firstLetter(item.name) !== catalogLetter) return false;
+      if (catalogFilter === 'saved' && !installed[item.id]) return false;
       if (catalogFilter === 'missing' && installed[item.id]) return false;
+      if (catalogFilter === 'favs' && !favourites[item.id]) return false;
       return !query || item.id.toLowerCase().indexOf(query) !== -1 || String(item.name).toLowerCase().indexOf(query) !== -1;
-    });
+    }).map(function (item) { item.extra = isBaseWithVariants(item, groups); return item; });
+  }
+
+  function isBaseWithVariants(item, groups) {
+    return baseOf(item.id) === item.id && groups[item.id] > 1 && !showVariants ? groups[item.id] - 1 : 0;
   }
 
   function refreshCatalog() {
     if (!catalogGrid) return;
     var installed = allChars();
-    var items = catalogItems();
+    var items = catalogItems(false);
     var pages = Math.max(1, Math.ceil(items.length / CATALOG_PAGE));
     catalogPage = Math.min(catalogPage, pages - 1);
     catalogGrid.innerHTML = '';
-    catalogCount.textContent = items.length + ' personajes' + (catalog.length ? '' : ' (catálogo sin conexión)')
+    catalogCount.textContent = items.length + ' personajes' + (catalog.length ? '' : ' (sin conexión)')
       + ' · ' + installedCodes().length + ' guardados';
     items.slice(catalogPage * CATALOG_PAGE, (catalogPage + 1) * CATALOG_PAGE).forEach(function (item) {
       var have = !!installed[item.id];
       var tile = makeTile(item.id, item.name, {
-        badge: catalogBusy[item.id] ? Math.round(catalogBusy[item.id] * 100) + '%' : (have ? 'Guardado' : 'Ver'),
+        badge: catalogBusy[item.id] ? Math.round(catalogBusy[item.id] * 100) + '%' : (have ? 'Guardado' : (favourites[item.id] ? '★' : 'Ver')),
         badgeClass: have ? '' : 'get',
         onclick: function () { openPreview(item.id, item.name); }
       });
+      if (item.extra) tile.appendChild(el('div', { class: 'variants', text: '+' + item.extra }));
+      if (favourites[item.id]) tile.classList.add('fav');
       if (catalogBusy[item.id]) tile.classList.add('busy');
       catalogGrid.appendChild(tile);
     });
+
+    // pager: arrows + numbered pages so any page is one click away
     catalogNav.innerHTML = '';
-    catalogNav.appendChild(el('button', { class: 'btn', text: '◀', disabled: catalogPage === 0 ? 'disabled' : null,
+    catalogNav.appendChild(el('button', { class: 'chip', text: '◀', disabled: catalogPage === 0 ? 'disabled' : null,
       onclick: function () { catalogPage = Math.max(0, catalogPage - 1); refreshCatalog(); } }));
-    catalogNav.appendChild(el('span', { class: 'page-info', text: 'Página ' + (catalogPage + 1) + ' de ' + pages }));
-    catalogNav.appendChild(el('button', { class: 'btn', text: '▶', disabled: catalogPage >= pages - 1 ? 'disabled' : null,
+    var first = Math.max(0, Math.min(catalogPage - 3, pages - 8));
+    for (var p = first; p < Math.min(pages, first + 8); p++) {
+      (function (number) {
+        catalogNav.appendChild(el('button', { class: 'chip' + (number === catalogPage ? ' active' : ''), text: String(number + 1),
+          onclick: function () { catalogPage = number; refreshCatalog(); } }));
+      })(p);
+    }
+    catalogNav.appendChild(el('button', { class: 'chip', text: '▶', disabled: catalogPage >= pages - 1 ? 'disabled' : null,
       onclick: function () { catalogPage = Math.min(pages - 1, catalogPage + 1); refreshCatalog(); } }));
+
+    // letters that have at least one result (ignoring the letter itself)
+    var present = {};
+    catalogItems(true).forEach(function (item) { present[firstLetter(item.name)] = true; });
     Array.prototype.forEach.call(catalogLetters.children, function (chip) {
-      chip.classList.toggle('active', chip.getAttribute('data-letter') === catalogLetter);
+      var letter = chip.getAttribute('data-letter');
+      chip.style.display = letter && !present[letter] ? 'none' : '';
+      chip.classList.toggle('active', letter === catalogLetter);
     });
     Array.prototype.forEach.call(catalogFilters.children, function (chip) {
-      chip.classList.toggle('active', chip.getAttribute('data-filter') === catalogFilter);
+      var key = chip.getAttribute('data-filter');
+      chip.classList.toggle('active', key === 'variants' ? showVariants : key === catalogFilter);
     });
   }
 
@@ -808,24 +851,25 @@
   }
 
   function buildCatalogPage() {
-    catalogSearch = el('input', { type: 'search', placeholder: 'Buscar (si tu teclado llega al wallpaper)' });
+    catalogSearch = el('input', { type: 'search', placeholder: 'Buscar (solo si llega el teclado)' });
     catalogSearch.addEventListener('input', function () { catalogPage = 0; refreshCatalog(); });
     catalogCount = el('div', { class: 'count' });
-    catalogGrid = el('div', { class: 'grid' });
+    catalogGrid = el('div', { class: 'grid compact' });
     catalogNav = el('div', { class: 'pager' });
-    // the engine forwards the mouse but not the keyboard or the wheel, so filtering and paging are done
-    // with buttons: letter chips and a state filter replace typing, arrows replace scrolling
+    // the engine forwards the mouse but not the keyboard, so filtering and paging are done with buttons
     catalogLetters = el('div', { class: 'chips' }, [''].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('')).map(function (letter) {
-      return el('button', { class: 'chip', 'data-letter': letter, text: letter || 'Todos',
+      return el('button', { class: 'chip', 'data-letter': letter, text: letter || 'A-Z',
         onclick: function () { catalogLetter = letter; catalogPage = 0; refreshCatalog(); } });
     }));
-    catalogFilters = el('div', { class: 'chips' }, [['all', 'Todos'], ['installed', 'Guardados'], ['missing', 'Sin descargar']].map(function (f) {
-      return el('button', { class: 'chip', 'data-filter': f[0], text: f[1],
-        onclick: function () { catalogFilter = f[0]; catalogPage = 0; refreshCatalog(); } });
-    }));
-    var page = el('div', { class: 'page' }, [
-      el('p', { class: 'hint', text: 'Pulsa cualquier personaje para verlo en pantalla, esté guardado o no (se baja un momento, 3-17 MB). Desde ahí puedes guardarlo o ponerlo en un hueco.' }),
-      catalogFilters, catalogLetters, catalogSearch, catalogCount, catalogNav, catalogGrid]);
+    catalogFilters = el('div', { class: 'chips' }, [['all', 'Todos'], ['favs', '★ Favoritos'], ['saved', 'Guardados'], ['missing', 'Sin descargar']]
+      .map(function (f) {
+        return el('button', { class: 'chip', 'data-filter': f[0], text: f[1],
+          onclick: function () { catalogFilter = f[0]; catalogPage = 0; refreshCatalog(); } });
+      }).concat([el('button', { class: 'chip', 'data-filter': 'variants', text: 'Con trajes',
+        title: 'Mostrar también las variantes de cada personaje',
+        onclick: function () { showVariants = !showVariants; catalogPage = 0; refreshCatalog(); } })]));
+    var head = el('div', { class: 'sticky-head' }, [catalogNav, catalogCount]);
+    var page = el('div', { class: 'page' }, [head, catalogFilters, catalogLetters, catalogSearch, catalogGrid]);
     page.sync = refreshCatalog;
     return page;
   }
@@ -854,6 +898,16 @@
         onclick: function () { preview.mode = m[0]; previewActions(); respawnPreview(); } });
     }));
     bar.appendChild(modes);
+    var variants = variantsOf(code);
+    if (variants.length > 1) {
+      bar.appendChild(el('div', { class: 'chips' }, variants.map(function (variant) {
+        return el('button', { class: 'chip' + (variant.id === code ? ' active' : ''), title: variant.name,
+          text: variant.id === baseOf(variant.id) ? 'Base' : variant.id.slice(-2),
+          onclick: function () { openPreview(variant.id, variant.name); } });
+      })));
+    }
+    bar.appendChild(el('button', { class: 'btn', text: favourites[code] ? '★ Favorito' : '☆ Favorito', onclick: function () {
+      toggleFavourite(code); previewActions(); refreshCatalog(); } }));
     if (!installed) {
       bar.appendChild(el('button', { class: 'btn primary', text: 'Guardar en mi colección', onclick: function () {
         if (!preview.buffer) return;
