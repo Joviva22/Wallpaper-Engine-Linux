@@ -1,0 +1,21 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --fps 30 --window 0x0x128x128 --bg /tmp/wpe-speed-verify-73mhzh36/.local/share/Steam/steamapps/workshop/content/431960/123 --scaling fill --clamp border --silent --speed 4.0 --screenshot /tmp/wpe-speed-verify-73mhzh36/speed4.png --screenshot-delay 120
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Video playback speed: 4x
+Cannot load libcuda.so.1
+● Video  --vid=1  (h264 128x128 30 fps) [default]
+[ffmpeg/video] h264: Device does not support the VK_KHR_video_decode_queue extension!
+[ffmpeg/video] h264: Failed setup for format vulkan: hwaccel initialisation returned error.
+[ffmpeg/video] h264: no frame!
+[ffmpeg/video] h264: Device does not support the VK_KHR_video_decode_queue extension!
+[ffmpeg/video] h264: Failed setup for format vulkan: hwaccel initialisation returned error.
+[ffmpeg/video] h264: no frame!
+[ffmpeg] CUDA: Cannot load libcuda.so.1
+[ffmpeg] CUDA: Could not dynamically load CUDA
+Using hardware decoding (vaapi-copy).
+VO: [libmpv] 128x128 nv12
+Stop requested by signal 15
+Stopping
+Video: no video
