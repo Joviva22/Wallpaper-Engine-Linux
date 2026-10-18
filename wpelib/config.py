@@ -41,9 +41,29 @@ THUMB_SIZE = (320, 320)  # 1:1; debe coincidir con CARD_SIZE en wpelib/ui.py
 DEFAULT_ID = "2168640648"
 STEAM_API_QUERYFILES = "https://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
+# Tope explicito contra "bombas de descompresion": PIL lanza DecompressionBombError
+# por encima del doble de este valor.
+Image.MAX_IMAGE_PIXELS = 50_000_000
+
 os.makedirs(CACHE_DIR, exist_ok=True)
 os.makedirs(WORKSHOP_THUMB_CACHE, exist_ok=True)
 os.makedirs(CONF_DIR, exist_ok=True)
+
+
+def _tighten_permissions():
+    """Estado y logs del usuario (incluye la API key de Steam): solo accesibles por
+    el propio usuario. Corrige tambien archivos creados antes de este ajuste."""
+    try:
+        os.chmod(CONF_DIR, 0o700)
+        for name in os.listdir(CONF_DIR):
+            path = os.path.join(CONF_DIR, name)
+            if os.path.isfile(path) and not os.path.islink(path):
+                os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
+_tighten_permissions()
 
 
 def atomic_write_json(path, data):

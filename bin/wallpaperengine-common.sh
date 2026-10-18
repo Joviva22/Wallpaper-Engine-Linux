@@ -2,6 +2,8 @@
 # Funciones compartidas: localizar la biblioteca de Steam y leer/escribir la configuracion.
 # Pensado para ser sourceado, no ejecutado directamente.
 
+umask 077  # estado y logs solo legibles por el usuario
+
 WPE_CONF_DIR="$HOME/.config/wallpaperengine-picker"
 WPE_CONFIG_FILE="$WPE_CONF_DIR/config.json"
 WPE_APPID="431960"

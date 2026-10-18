@@ -69,7 +69,8 @@ def steam_api_search(api_key, search_text, required_tags=None, query_type=0, day
     except urllib.error.HTTPError as e:
         raise SteamApiError(f"Error HTTP {e.code} de la API de Steam (revisa tu API key)") from e
     except Exception as e:
-        raise SteamApiError(f"No se pudo contactar la API de Steam: {e}") from e
+        # La URL (con la API key) puede aparecer en el texto de la excepcion.
+        raise SteamApiError(f"No se pudo contactar la API de Steam: {str(e).replace(api_key, '***')}") from e
 
     response = data.get("response", {})
     return response.get("total", 0), response.get("publishedfiledetails", [])
@@ -108,13 +109,25 @@ def steam_api_search_multi(api_key, search_text, required_tags, ratings, query_t
     return total_sum, merged
 
 
+MAX_THUMB_BYTES = 10 * 1024 * 1024
+
+
 def download_workshop_thumb(wid, url):
     dest = os.path.join(WORKSHOP_THUMB_CACHE, f"{wid}.png")
     if os.path.isfile(dest):
         return dest
+    if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+        return None
+    tmp_path = dest + ".tmp"
     try:
-        tmp_path = dest + ".tmp"
-        urllib.request.urlretrieve(url, tmp_path)
+        # Con timeout y tope de tamano: una conexion colgada o un archivo enorme no
+        # deben bloquear el hilo ni llenar el disco/memoria.
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            data = resp.read(MAX_THUMB_BYTES + 1)
+        if len(data) > MAX_THUMB_BYTES:
+            return None
+        with open(tmp_path, "wb") as f:
+            f.write(data)
         img = Image.open(tmp_path).convert("RGB")
         img.thumbnail(THUMB_SIZE, Image.LANCZOS)
         canvas = Image.new("RGB", THUMB_SIZE, (30, 30, 30))
@@ -122,10 +135,14 @@ def download_workshop_thumb(wid, url):
         y = (THUMB_SIZE[1] - img.height) // 2
         canvas.paste(img, (x, y))
         canvas.save(dest, "PNG")
-        os.remove(tmp_path)
         return dest
     except Exception:
         return None
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
 
 
 def is_already_downloaded(wid):
