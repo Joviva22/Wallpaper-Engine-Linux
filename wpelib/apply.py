@@ -11,7 +11,6 @@ Por cada pantalla se lanza un proceso "vigilante" desacoplado (fork + setsid) qu
      (y apuntarlo en known_bad.json) o un cambio deliberado de wallpaper.
 
 Uso: wallpaperengine-apply PANTALLA=ID [PANTALLA=ID ...]"""
-import fcntl
 import json
 import os
 import re
@@ -21,7 +20,7 @@ import sys
 import time
 
 from . import config
-from .config import atomic_write_json, load_json
+from .config import FileLock, atomic_write_json, load_json
 
 MAX_LOG_BYTES = 5 * 1024 * 1024
 CRASH_LOG_PATTERN = re.compile(r"terminate called|Segmentation fault|Aborted \(core dumped\)")
@@ -43,26 +42,7 @@ def log_file(screen):
     return _path(f"wallpaperengine_{screen}.log")
 
 
-class _Lock:
-    """flock exclusivo sobre un archivo (se libera al cerrar o al morir el proceso).
-    Python abre los descriptores como no heredables, asi que el motor no lo retiene."""
-
-    def __init__(self, path):
-        self.path = path
-        self.fd = None
-
-    def __enter__(self):
-        self.fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
-        fcntl.flock(self.fd, fcntl.LOCK_EX)
-        return self
-
-    def __exit__(self, *exc):
-        self.release()
-
-    def release(self):
-        if self.fd is not None:
-            os.close(self.fd)
-            self.fd = None
+_Lock = FileLock
 
 
 # ---------------------------------------------------------------------------

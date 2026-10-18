@@ -2,6 +2,7 @@
 disco: wallpapers ocultos, listas de rotacion, wallpapers con fallos
 conocidos, y el escaneo de la biblioteca local ya descargada."""
 import copy
+import fcntl
 import hashlib
 import json
 import os
@@ -85,6 +86,30 @@ def atomic_write_json(path, data):
         except OSError:
             pass
         raise
+
+
+class FileLock:
+    """flock exclusivo sobre un archivo, compartido entre procesos (GUI, demonio de
+    rotacion, apply). Se libera al salir del bloque o al morir el proceso. Python abre
+    los descriptores como no heredables, asi que los hijos no lo retienen."""
+
+    def __init__(self, path):
+        self.path = path
+        self.fd = None
+
+    def __enter__(self):
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        self.fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(self.fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        self.release()
+
+    def release(self):
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
 
 
 def _id_set(data):
@@ -287,9 +312,26 @@ def load_playlists():
     return load_json(PLAYLISTS_FILE, {})
 
 
-def save_playlists(data):
-    os.makedirs(CONF_DIR, exist_ok=True)
-    atomic_write_json(PLAYLISTS_FILE, data)
+PLAYLISTS_LOCK = os.path.join(CONF_DIR, "playlists.lock")
+PLAYLIST_PROGRESS_KEYS = ("current_index", "last_switch")
+
+
+def save_playlists(data, fresh_progress=()):
+    """Guarda las playlists. El progreso de rotacion (current_index/last_switch) lo
+    escribe el demonio mientras la ventana tiene una copia en memoria que puede estar
+    desfasada, asi que, bajo el lock compartido con el demonio, se conserva el valor
+    del disco salvo para las pantallas de `fresh_progress` (reinicio deliberado)."""
+    with FileLock(PLAYLISTS_LOCK):
+        on_disk = load_json(PLAYLISTS_FILE, {})
+        merged = copy.deepcopy(data)
+        for screen, entry in merged.items():
+            disk_entry = on_disk.get(screen)
+            if screen in fresh_progress or not isinstance(disk_entry, dict) or not isinstance(entry, dict):
+                continue
+            for key in PLAYLIST_PROGRESS_KEYS:
+                if key in disk_entry:
+                    entry[key] = disk_entry[key]
+        atomic_write_json(PLAYLISTS_FILE, merged)
 
 
 def load_scaling():

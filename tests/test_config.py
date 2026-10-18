@@ -66,6 +66,45 @@ class LoadJsonTest(unittest.TestCase):
         self.assertTrue(os.path.exists(self.path + ".corrupt"))
 
 
+class PlaylistsTest(unittest.TestCase):
+    def setUp(self):
+        d = tempfile.mkdtemp()
+        self._saved = (config.PLAYLISTS_FILE, config.PLAYLISTS_LOCK)
+        config.PLAYLISTS_FILE = os.path.join(d, "playlists.json")
+        config.PLAYLISTS_LOCK = os.path.join(d, "playlists.lock")
+
+    def tearDown(self):
+        config.PLAYLISTS_FILE, config.PLAYLISTS_LOCK = self._saved
+
+    def entry(self, idx, last, items=("1", "2")):
+        return {"enabled": True, "interval_minutes": 30, "items": list(items),
+                "current_index": idx, "last_switch": last}
+
+    def test_stale_window_copy_keeps_daemon_progress(self):
+        config.save_playlists({"A": self.entry(0, 0)})
+        # El demonio avanza mientras la ventana tiene la copia vieja en memoria.
+        config.atomic_write_json(config.PLAYLISTS_FILE, {"A": self.entry(1, 999)})
+        stale = {"A": self.entry(0, 0, items=("1", "2", "3"))}
+        config.save_playlists(stale)
+        got = config.load_playlists()["A"]
+        self.assertEqual((got["current_index"], got["last_switch"]), (1, 999))
+        self.assertEqual(got["items"], ["1", "2", "3"])  # lo que edita la GUI se respeta
+        self.assertEqual(stale["A"]["current_index"], 0)  # no muta el argumento
+
+    def test_fresh_progress_resets(self):
+        config.atomic_write_json(config.PLAYLISTS_FILE, {"A": self.entry(1, 999), "B": self.entry(1, 5)})
+        config.save_playlists({"A": self.entry(0, 123), "B": self.entry(0, 0)}, fresh_progress={"A"})
+        got = config.load_playlists()
+        self.assertEqual((got["A"]["current_index"], got["A"]["last_switch"]), (0, 123))
+        self.assertEqual((got["B"]["current_index"], got["B"]["last_switch"]), (1, 5))
+
+    def test_new_screen_and_corrupt_disk(self):
+        with open(config.PLAYLISTS_FILE, "w") as f:
+            f.write("{broken")
+        config.save_playlists({"N": self.entry(0, 0)})
+        self.assertIn("N", config.load_playlists())
+
+
 class HiddenPasswordTest(unittest.TestCase):
     def tearDown(self):
         config.clear_hidden_password()

@@ -107,8 +107,22 @@ def _repack(path, header, entries, raw_by_name):
     for name, _, _ in new_entries:
         out += raw_by_name[name]
 
-    with open(path, "wb") as f:
-        f.write(out)
+    # A un temporal + rename atomico: un fallo a mitad de escritura no deja el
+    # scene.pkg (que Steam puede no volver a descargar) a medias.
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "wb") as f:
+            f.write(out)
+            f.flush()
+            os.fsync(f.fileno())
+        shutil.copymode(path, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def _fix_vector_padding(scene):

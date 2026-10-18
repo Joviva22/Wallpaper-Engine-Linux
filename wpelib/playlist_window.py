@@ -235,7 +235,7 @@ class PlaylistWindow(Gtk.Window):
             data["current_index"] = 0
             data["last_switch"] = int(time.time())
             self.playlists[monitor] = data
-            save_playlists(self.playlists)
+            save_playlists(self.playlists, fresh_progress={monitor})
             subprocess.Popen([APPLY_SCRIPT, f"{monitor}={data['items'][0]}"])
             self.status_label.set_text(f"Rotacion guardada y activada en {monitor} ({len(data['items'])} wallpapers)")
         else:

@@ -46,9 +46,13 @@ while true; do
             "$APPLY" "$screen=$id" >/dev/null 2>&1 </dev/null 9>&-
 
             # Se relee el archivo justo antes de escribir para no pisar cambios de la GUI.
-            tmp=$(jq --arg s "$screen" --argjson i "$next_idx" --argjson t "$now" \
-                '.[$s].current_index = $i | .[$s].last_switch = $t' "$PLAYLISTS_FILE") || continue
-            echo "$tmp" > "$PLAYLISTS_FILE.tmp.$$" && mv -f "$PLAYLISTS_FILE.tmp.$$" "$PLAYLISTS_FILE"
+            # Bajo el mismo lock (playlists.lock) que usa la GUI al guardar.
+            (
+                flock 8
+                tmp=$(jq --arg s "$screen" --argjson i "$next_idx" --argjson t "$now" \
+                    '.[$s].current_index = $i | .[$s].last_switch = $t' "$PLAYLISTS_FILE") || exit 0
+                echo "$tmp" > "$PLAYLISTS_FILE.tmp.$$" && mv -f "$PLAYLISTS_FILE.tmp.$$" "$PLAYLISTS_FILE"
+            ) 8>"$CONF_DIR/playlists.lock" 9>&-
         done <<< "$due"
     fi
     sleep "$POLL_SECONDS" 9>&-

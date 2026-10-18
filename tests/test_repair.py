@@ -51,6 +51,24 @@ class PkgTest(unittest.TestCase):
         self.assertEqual(raw2, raw)
 
 
+class AtomicRepackTest(unittest.TestCase):
+    def test_failed_replace_keeps_original(self):
+        from unittest import mock
+        d = tempfile.mkdtemp()
+        pkg = os.path.join(d, "scene.pkg")
+        build_pkg(pkg, {"scene.json": b"{}"})
+        with open(pkg, "rb") as f:
+            before = f.read()
+        header, entries, raw = repair._unpack(pkg)
+        raw["scene.json"] = b'{"changed": true}'
+        with mock.patch("os.replace", side_effect=OSError("disk full")):
+            with self.assertRaises(OSError):
+                repair._repack(pkg, header, entries, raw)
+        with open(pkg, "rb") as f:
+            self.assertEqual(f.read(), before)
+        self.assertEqual(os.listdir(d), ["scene.pkg"])
+
+
 class RepairTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
