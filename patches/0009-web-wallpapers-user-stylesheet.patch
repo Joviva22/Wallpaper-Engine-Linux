@@ -1,0 +1,128 @@
+diff --git a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+index 109d86ab..85e8365a 100644
+--- a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
++++ b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+@@ -8,6 +8,8 @@
+ #include "WallpaperEngine/Data/Model/Property.h"
+ #include <nlohmann/json.hpp>
+ #include <cmath>
++#include <cstdlib>
++#include <fstream>
+ #include <iomanip>
+ #include "WallpaperEngine/Audio/Drivers/Recorders/PlaybackRecorder.h"
+ #include <sstream>
+@@ -20,6 +22,55 @@ using namespace WallpaperEngine::WebBrowser;
+ using namespace WallpaperEngine::WebBrowser::CEF;
+ 
+ namespace {
++/**
++ * Optional user stylesheet for a web wallpaper: ~/.config/wallpaperengine-picker/web_css/<workshopId>.css
++ * (or all.css for every web wallpaper). Injected into the page as a <style> element once it has loaded,
++ * so the user can restyle it (e.g. replace the background) without touching the wallpaper's own files.
++ */
++std::string readUserCss (const std::string& workshopId) {
++    std::string base;
++
++    if (const char* xdg = getenv ("XDG_CONFIG_HOME"); xdg && *xdg) {
++	base = xdg;
++    } else if (const char* home = getenv ("HOME"); home && *home) {
++	base = std::string (home) + "/.config";
++    } else {
++	return "";
++    }
++
++    std::string css;
++
++    for (const std::string& name : { std::string ("all"), workshopId }) {
++	std::ifstream file (base + "/wallpaperengine-picker/web_css/" + name + ".css");
++
++	if (!file) {
++	    continue;
++	}
++
++	std::ostringstream content;
++
++	content << file.rdbuf ();
++	css += content.str () + "\n";
++    }
++
++    return css;
++}
++
++std::string buildUserCssScript (const std::string& css) {
++    if (css.empty ()) {
++	return "";
++    }
++
++    return "(function () {\n"
++	   "  var style = document.createElement ('style');\n"
++	   "  style.id = '__wpe_user_css';\n"
++	   "  style.textContent = "
++	+ nlohmann::json (css).dump ()
++	+ ";\n"
++	  "  (document.head || document.documentElement).appendChild (style);\n"
++	  "})();\n";
++}
++
+ /**
+  * Wallpaper Engine hands web wallpapers their user properties by calling
+  * window.wallpaperPropertyListener.applyUserProperties ({ name: { value } }) once the page is
+@@ -97,7 +148,10 @@ CWeb::CWeb (
+     browserSettings.windowless_frame_rate = std::max (60, context.getApp ().getContext ().settings.render.maximumFPS);
+ 
+     this->m_client = new WebBrowser::CEF::BrowserClient (m_renderHandler);
+-    this->m_client->setLoadScript (buildUserPropertiesScript (this->getWeb ().project.properties));
++    this->m_client->setLoadScript (
++	buildUserCssScript (readUserCss (this->getWeb ().project.workshopId))
++	+ buildUserPropertiesScript (this->getWeb ().project.properties)
++    );
+     // use the custom scheme for the wallpaper's files
+     const std::string htmlURL = WPSchemeHandlerFactory::generateSchemeName (this->getWeb ().project.workshopId)
+ 	+ "://root/" + this->getWeb ().filename;
+diff --git a/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp b/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
+index f345f353..9a43039e 100644
+--- a/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
++++ b/src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
+@@ -1,5 +1,7 @@
+ #include "WPSchemeHandler.h"
+ #include "WallpaperEngine/Assets/AssetLoadException.h"
++#include <cstdlib>
++#include <fstream>
+ #include <iostream>
+ 
+ #include "MimeTypes.h"
+@@ -46,8 +48,32 @@ bool WPSchemeHandler::Open (CefRefPtr<CefRequest> request, bool& handle_request,
+ 	    this->m_mimeType = mime;
+ 	}
+ 
+-	this->m_contents = this->m_assetLoader.read (file);
+-	callback->Continue ();
++	if (file.rfind ("__user/", 0) == 0) {
++	    // files the user dropped in ~/.config/wallpaperengine-picker/web_css/files/ (for their own stylesheet,
++	    // e.g. a custom background image), served under <scheme>://root/__user/<name>. The wallpaper's own
++	    // files are never overridden: this prefix cannot exist in a project.
++	    const std::string relative = file.substr (7);
++	    const char* xdg = getenv ("XDG_CONFIG_HOME");
++	    const char* home = getenv ("HOME");
++	    const std::string base = (xdg && *xdg) ? std::string (xdg) : (home && *home ? std::string (home) + "/.config" : "");
++
++	    if (!base.empty () && !relative.empty () && relative.find ("..") == std::string::npos && relative[0] != '/') {
++		auto stream = std::make_shared<std::ifstream> (
++		    base + "/wallpaperengine-picker/web_css/files/" + relative, std::ios::binary
++		);
++
++		if (stream->good ()) {
++		    this->m_contents = stream;
++		}
++	    }
++
++	} else {
++	    this->m_contents = this->m_assetLoader.read (file);
++	}
++
++	if (this->m_contents) {
++	    callback->Continue ();
++	}
+     } catch (AssetLoadException&) {
+ #if !NDEBUG
+ 	std::cout << "Cannot read file " << file << std::endl;
