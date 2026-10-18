@@ -3,4 +3,4 @@ __pycache__/
 
 # Solo el README va en el repositorio; el resto de Markdown es de trabajo local.
 *.md
-!README.md
+!/README.md
