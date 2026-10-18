@@ -1,0 +1,24 @@
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0c1016;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* one container per character slot; size and position are set from the wallpaper properties */
+.slot {
+  position: absolute;
+  bottom: 0;
+}
+
+.slot .spine-player-canvas,
+.slot canvas {
+  width: 100%;
+  height: 100%;
+}
