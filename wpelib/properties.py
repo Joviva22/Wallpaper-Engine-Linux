@@ -5,7 +5,7 @@ valor actual, y min/max/step o lista de opciones segun el tipo) y
 --set-property clave=valor para sobreescribirlas al lanzarlo."""
 import subprocess
 
-from .config import ASSETS_DIR, WORKSHOP_DIR
+from .config import ASSETS_DIR, WORKSHOP_DIR, engine_executable
 
 
 def list_properties(wid, timeout=8):
@@ -16,7 +16,7 @@ def list_properties(wid, timeout=8):
     folder = f"{WORKSHOP_DIR}/{wid}"
     try:
         result = subprocess.run(
-            ["linux-wallpaperengine", "--assets-dir", ASSETS_DIR, "--bg", folder, "--list-properties"],
+            [engine_executable(), "--assets-dir", ASSETS_DIR, "--bg", folder, "--list-properties"],
             capture_output=True, text=True, timeout=timeout,
         )
     except Exception:

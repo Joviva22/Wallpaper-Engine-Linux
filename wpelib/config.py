@@ -375,6 +375,18 @@ def save_audio(data):
 
 _SPEED_SUPPORTED = None
 
+# Motor compilado localmente con los parches de patches/ (ver scripts/build-engine.sh).
+# Si existe, tiene prioridad sobre el linux-wallpaperengine del sistema.
+PATCHED_ENGINE_DIR = os.path.expanduser("~/.local/opt/linux-wallpaperengine")
+PATCHED_ENGINE_WRAPPER = os.path.join(PATCHED_ENGINE_DIR, "bin", "linux-wallpaperengine")
+
+
+def engine_executable():
+    """Ejecutable del motor: el parcheado si esta instalado, si no el del sistema."""
+    if os.access(PATCHED_ENGINE_WRAPPER, os.X_OK):
+        return PATCHED_ENGINE_WRAPPER
+    return "linux-wallpaperengine"
+
 
 def engine_supports_speed():
     """True si el linux-wallpaperengine instalado reconoce --speed (es un parche,
@@ -382,7 +394,7 @@ def engine_supports_speed():
     global _SPEED_SUPPORTED
     if _SPEED_SUPPORTED is None:
         try:
-            out = subprocess.run(["linux-wallpaperengine", "--help"], capture_output=True,
+            out = subprocess.run([engine_executable(), "--help"], capture_output=True,
                                  text=True, timeout=10)
             _SPEED_SUPPORTED = "--speed" in (out.stdout + out.stderr)
         except Exception:
