@@ -37,6 +37,14 @@ for pair in "$@"; do
         echo "Formato invalido: '$pair' (usa PANTALLA=ID)" >&2
         exit 1
     fi
+    if [[ ! "$id" =~ ^[0-9]+$ ]]; then
+        echo "ID invalido: '$id' (solo digitos)" >&2
+        exit 1
+    fi
+    if [[ ! "$screen" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        echo "Nombre de pantalla invalido: '$screen'" >&2
+        exit 1
+    fi
     if [[ ! -d "$WORKSHOP_DIR/$id" ]]; then
         echo "No existe el wallpaper con id $id en $WORKSHOP_DIR" >&2
         exit 1
@@ -151,9 +159,11 @@ watch_for_crash() {
 
     if $crashed; then
         echo "$current" | jq --arg id "$id" --arg screen "$screen" --arg ts "$(date -Iseconds)" \
-            '.[$id] = {screen: $screen, detected_at: $ts}' > "$KNOWN_BAD_FILE" 2>/dev/null || true
+            '.[$id] = {screen: $screen, detected_at: $ts}' > "$KNOWN_BAD_FILE.tmp.$$" 2>/dev/null \
+            && mv -f "$KNOWN_BAD_FILE.tmp.$$" "$KNOWN_BAD_FILE" || rm -f "$KNOWN_BAD_FILE.tmp.$$"
     else
-        echo "$current" | jq --arg id "$id" 'del(.[$id])' > "$KNOWN_BAD_FILE" 2>/dev/null || true
+        echo "$current" | jq --arg id "$id" 'del(.[$id])' > "$KNOWN_BAD_FILE.tmp.$$" 2>/dev/null \
+            && mv -f "$KNOWN_BAD_FILE.tmp.$$" "$KNOWN_BAD_FILE" || rm -f "$KNOWN_BAD_FILE.tmp.$$"
     fi
 }
 
@@ -185,6 +195,12 @@ restart_screen() {
                 sleep 0.3
                 kill -0 "$old_pid" 2>/dev/null && kill -9 "$old_pid" 2>/dev/null || true
             fi
+        fi
+
+        # Rotar el log si supera 5 MB (se conserva uno anterior como .1): evita logs
+        # de cientos de MB y que el conteo de lineas de abajo sea lento.
+        if [[ -f "$logfile" ]] && (( $(stat -c %s "$logfile") > 5242880 )); then
+            mv -f "$logfile" "$logfile.1"
         fi
 
         log_start_lines=0
@@ -251,4 +267,4 @@ tmp=$(jq -n '{}')
 for screen in "${!ASSIGN[@]}"; do
     tmp=$(echo "$tmp" | jq --arg k "$screen" --arg v "${ASSIGN[$screen]}" '. + {($k): $v}')
 done
-echo "$tmp" > "$CURRENT_FILE"
+echo "$tmp" > "$CURRENT_FILE.tmp.$$" && mv -f "$CURRENT_FILE.tmp.$$" "$CURRENT_FILE"

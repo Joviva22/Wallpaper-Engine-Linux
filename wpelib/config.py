@@ -8,6 +8,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import tempfile
 
 from PIL import Image
 
@@ -42,6 +43,27 @@ STEAM_API_QUERYFILES = "https://api.steampowered.com/IPublishedFileService/Query
 os.makedirs(CACHE_DIR, exist_ok=True)
 os.makedirs(WORKSHOP_THUMB_CACHE, exist_ok=True)
 os.makedirs(CONF_DIR, exist_ok=True)
+
+
+def atomic_write_json(path, data):
+    """Escribe JSON a un temporal en el mismo directorio y lo renombra encima
+    (os.replace es atomico): un crash o una escritura concurrente nunca deja
+    el archivo a medias."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".tmp-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -101,8 +123,7 @@ def load_config():
 
 def save_config(cfg):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
+    atomic_write_json(CONFIG_FILE, cfg)
     try:
         os.chmod(CONFIG_FILE, 0o600)
     except OSError:
@@ -161,8 +182,7 @@ def load_hidden_ids():
 
 def save_hidden_ids(ids):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(HIDDEN_FILE, "w", encoding="utf-8") as f:
-        json.dump(sorted(ids), f, indent=2)
+    atomic_write_json(HIDDEN_FILE, sorted(ids))
 
 
 def has_hidden_password():
@@ -177,8 +197,7 @@ def set_hidden_password(password):
     salt = secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 200_000).hex()
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(HIDDEN_LOCK_FILE, "w", encoding="utf-8") as f:
-        json.dump({"salt": salt, "hash": digest}, f, indent=2)
+    atomic_write_json(HIDDEN_LOCK_FILE, {"salt": salt, "hash": digest})
     try:
         os.chmod(HIDDEN_LOCK_FILE, 0o600)
     except OSError:
@@ -216,8 +235,7 @@ def load_favorite_ids():
 
 def save_favorite_ids(ids):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(FAVORITES_FILE, "w", encoding="utf-8") as f:
-        json.dump(sorted(ids), f, indent=2)
+    atomic_write_json(FAVORITES_FILE, sorted(ids))
 
 
 def load_recent_ids():
@@ -236,8 +254,7 @@ def record_recent(wid):
     recents.insert(0, wid)
     recents = recents[:MAX_RECENTS]
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(RECENTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(recents, f, indent=2)
+    atomic_write_json(RECENTS_FILE, recents)
     return recents
 
 
@@ -253,8 +270,7 @@ def load_ui_state():
 
 def save_ui_state(state):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(UI_STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
+    atomic_write_json(UI_STATE_FILE, state)
 
 
 def load_playlists():
@@ -269,8 +285,7 @@ def load_playlists():
 
 def save_playlists(data):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(PLAYLISTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    atomic_write_json(PLAYLISTS_FILE, data)
 
 
 def load_scaling():
@@ -286,8 +301,7 @@ def load_scaling():
 
 def save_scaling(data):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(SCALING_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    atomic_write_json(SCALING_FILE, data)
 
 
 def load_properties():
@@ -304,8 +318,7 @@ def load_properties():
 
 def save_properties(data):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(PROPERTIES_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    atomic_write_json(PROPERTIES_FILE, data)
 
 
 def load_audio():
@@ -327,8 +340,7 @@ def load_audio():
 
 def save_audio(data):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(AUDIO_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    atomic_write_json(AUDIO_FILE, data)
 
 
 def load_speed():
@@ -348,8 +360,7 @@ def load_speed():
 
 def save_speed(data):
     os.makedirs(CONF_DIR, exist_ok=True)
-    with open(SPEED_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    atomic_write_json(SPEED_FILE, data)
 
 
 def unsubscribe_workshop_item(wid):

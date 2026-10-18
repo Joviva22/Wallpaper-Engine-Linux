@@ -14,6 +14,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf, GLib, Gdk, Pango
 
 from .config import (
+    atomic_write_json,
     load_wallpapers, detect_monitors, load_current_assignments, load_hidden_ids,
     save_hidden_ids, load_favorite_ids, save_favorite_ids, load_recent_ids, record_recent,
     load_known_bad, load_playlists, save_playlists, load_ui_state, save_ui_state,
@@ -1170,8 +1171,7 @@ class PickerWindow(Gtk.Window):
             return
         self.known_bad.pop(wid, None)
         try:
-            with open(KNOWN_BAD_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.known_bad, f, indent=2)
+            atomic_write_json(KNOWN_BAD_FILE, self.known_bad)
         except Exception:
             pass
 

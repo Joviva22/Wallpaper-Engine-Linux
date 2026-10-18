@@ -15,6 +15,10 @@ POLL_SECONDS=30
 
 mkdir -p "$CONF_DIR"
 
+# Instancia unica: si ya hay otro demonio de rotacion, salir.
+exec 9>"$CONF_DIR/rotate.lock"
+flock -n 9 || { echo "wallpaperengine-rotate ya esta en ejecucion" >&2; exit 0; }
+
 while true; do
     if [[ -f "$PAUSE_FILE" ]]; then
         sleep "$POLL_SECONDS"
@@ -43,7 +47,7 @@ while true; do
 
                 tmp=$(jq --arg s "$screen" --argjson i "$next_idx" --argjson t "$now" \
                     '.[$s].current_index = $i | .[$s].last_switch = $t' "$PLAYLISTS_FILE")
-                echo "$tmp" > "$PLAYLISTS_FILE"
+                echo "$tmp" > "$PLAYLISTS_FILE.tmp.$$" && mv -f "$PLAYLISTS_FILE.tmp.$$" "$PLAYLISTS_FILE"
             fi
         done
     fi

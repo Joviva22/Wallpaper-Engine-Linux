@@ -2,6 +2,7 @@
 """Icono de bandeja para acciones rapidas de Wallpaper Engine Picker sin abrir
 la ventana completa: wallpaper aleatorio por pantalla, pausar/reanudar la
 rotacion automatica, y un acceso directo al selector completo."""
+import fcntl
 import json
 import os
 import random
@@ -114,6 +115,13 @@ def build_menu():
 
 
 def main():
+    # Instancia unica: el lock se libera solo al morir el proceso.
+    os.makedirs(CONF_DIR, exist_ok=True)
+    lock = open(os.path.join(CONF_DIR, "tray.lock"), "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return
     menu = build_menu()
 
     if HAVE_INDICATOR:

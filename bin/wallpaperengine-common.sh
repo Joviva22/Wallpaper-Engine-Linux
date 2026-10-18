@@ -60,7 +60,7 @@ wpe_get_steam_library() {
     else
         tmp=$(jq -n --arg lib "$detected" '{steam_library: $lib}')
     fi
-    echo "$tmp" > "$WPE_CONFIG_FILE"
+    echo "$tmp" > "$WPE_CONFIG_FILE.tmp.$$" && mv -f "$WPE_CONFIG_FILE.tmp.$$" "$WPE_CONFIG_FILE"
 
     echo "$detected"
 }
