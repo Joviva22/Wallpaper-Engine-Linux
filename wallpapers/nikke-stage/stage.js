@@ -51,7 +51,7 @@
 
   // ------------------------------------------------------------------ defaults and settings
   function defaultValues() {
-    var defaults = { bgimage: true, bgblur: 0, bgdim: 0, shadow: 40, aimfollow: true, autospread: true, speed: 100, reactevery: 0, bounce: 0, labels: false, bgcolor: '#0c1016' };
+    var defaults = { voicelang: 'jp', voicevolume: 60, voicesilence: false, bgimage: true, bgblur: 0, bgdim: 0, shadow: 40, aimfollow: true, autospread: true, speed: 100, reactevery: 0, bounce: 0, labels: false, bgcolor: '#0c1016' };
     var xs = { 1: 50, 2: 25, 3: 75, 4: 10 };
     for (var i = 1; i <= SLOT_COUNT; i++) {
       defaults['char' + i] = 'none';
@@ -85,7 +85,7 @@
       if (key === 'bgcolor') value = toHex(value);
       else if (typeof value === 'string' && value === 'true') value = true;
       else if (typeof value === 'string' && value === 'false') value = false;
-      else if (/^(x|scale|y|z)\d$|^(speed|reactevery|bounce|bgblur|bgdim|shadow)$/.test(key)) value = Number(value);
+      else if (/^(x|scale|y|z)\d$|^(speed|reactevery|bounce|bgblur|bgdim|shadow|voicevolume)$/.test(key)) value = Number(value);
       if (value !== null) flat[key] = value;
     });
     return flat;
@@ -366,7 +366,51 @@
     slot.reactions = null;
   }
 
+  var ENTRY_ANIMS = { aim: ['to_aim', 'aim_in'], cover: ['to_cover', 'cover_in', 'cover_start', 'to_cover_idle'], main: ['idle_start', 'start'] };
+
+  // ---- voices: downloaded per character with `nikke-stage.py voices CODE [jp|en|cn]`
+  var voiceAudio = null;
+  var VOICE_EVENTS = { main: /^(Lobby_Touch|Lobby_Stay|Field_Touch|Outpost_Touch)/, aim: /^(Battle_|FullBurst|Reload|Kill_Monster|Ult_)/, cover: /^(Battle_|Damage|Reload|Win)/ };
+
+  function voiceFiles(code, lang) {
+    var byLang = (diskVoices || {})[lang] || {};
+    return byLang[code] || byLang[code.replace(/_\d+$/, '')] || null;
+  }
+
+  function playVoice(slot, why) {
+    if (values.voicesilence || values.voicelang === 'off') return;
+    var code = slot.loaded;
+    var lang = values.voicelang;
+    var files = code && voiceFiles(code, lang);
+    if (!files || !files.length) return;
+    var mode = slot.loadedMode || 'main';
+    var pattern = why === 'touch' && mode === 'main' ? /^(Lobby_Touch|Field_Touch|Outpost_Touch)/ : (VOICE_EVENTS[mode] || VOICE_EVENTS.main);
+    var pool = files.filter(function (f) { return pattern.test(f.replace(/^c\d+(_\d+)?_/, '')); });
+    if (!pool.length) pool = files;
+    if (voiceAudio && !voiceAudio.ended) { try { voiceAudio.pause(); } catch (e) {} }
+    var folder = code in (diskVoices[lang] || {}) ? code : code.replace(/_\d+$/, '');
+    var url = BASE + 'voices/' + lang + '/' + folder + '/' + pool[Math.floor(Math.random() * pool.length)];
+    var volume = Math.max(0, Math.min(1, (Number(values.voicevolume) || 0) / 100));
+    // the engine's scheme handler has no byte ranges, which media elements need: fetch the bytes and play a blob
+    voiceBlob(url).then(function (blobUrl) {
+      voiceAudio = new Audio(blobUrl);
+      voiceAudio.volume = volume;
+      return voiceAudio.play();
+    }).catch(function (e) { console.error('voice: ' + e); });
+  }
+
+  var voiceBlobs = {};
+  function voiceBlob(url) {
+    if (!voiceBlobs[url]) {
+      voiceBlobs[url] = fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+        .then(function (blob) { return URL.createObjectURL(new Blob([blob], { type: /\.ogg$/.test(url) ? 'audio/ogg' : 'audio/wav' })); });
+      voiceBlobs[url].catch(function () { delete voiceBlobs[url]; });
+    }
+    return voiceBlobs[url];
+  }
+
   function playReaction(slot) {
+    playVoice(slot, 'touch');
     if (!slot.player || !slot.reactions || !slot.reactions.length) return;
     playAnimation(slot, slot.reactions[Math.floor(Math.random() * slot.reactions.length)], false);
   }
@@ -437,6 +481,8 @@
     if (!code || code === 'none' || !allChars()[code]) return;
     var token = slot.token;
     var fromDisk = !!diskChars[code];
+    var previousMode = slot.shownMode;
+    slot.shownMode = mode;
 
     (fromDisk ? Promise.resolve(null) : rawUrlsFor(code)).then(function (raw) {
       if (token !== slot.token) return;
@@ -452,6 +498,11 @@
           slot.reactions = names.filter(function (n) { return REACTION_RE.test(n) && n !== slot.baseAnim; });
           slot.element.style.opacity = '1';
           if (mode === 'aim') setupAim(slot); else slot.aim = null;
+          // pose change: play the skeleton's own entry animation once before settling
+          if (previousMode && previousMode !== mode) {
+            var entry = (ENTRY_ANIMS[mode] || []).filter(function (n) { return names.indexOf(n) !== -1; })[0];
+            if (entry) playAnimation(slot, entry, false);
+          }
           refreshPanel();
         },
         function () {
@@ -716,7 +767,7 @@
       return swatch;
     }));
     var rows = [toggle('bgimage', 'Imagen de fondo'), slider('bgblur', 'Desenfoque', 0, 30, 1, ' px'), slider('bgdim', 'Oscurecer fondo', 0, 80, 1, '%'),
-                slider('shadow', 'Sombra', 0, 100, 1, '%'), toggle('aimfollow', 'Apuntar al cursor'), toggle('autospread', 'Repartir solos'), toggle('labels', 'Mostrar nombres'),
+                slider('shadow', 'Sombra', 0, 100, 1, '%'), slider('voicevolume', 'Volumen de voces', 0, 100, 1, '%'), toggle('voicesilence', 'Silenciar voces'), toggle('aimfollow', 'Apuntar al cursor'), toggle('autospread', 'Repartir solos'), toggle('labels', 'Mostrar nombres'),
                 slider('speed', 'Velocidad', 25, 300, 5, '%'), slider('reactevery', 'Reacción cada', 0, 120, 5, ' s'),
                 slider('bounce', 'Latido (música)', 0, 30, 1, '%')];
     var reset = el('button', { class: 'btn danger', text: 'Restablecer ajustes', onclick: function () {
@@ -1321,9 +1372,11 @@
   }
 
   // ------------------------------------------------------------------ start
+  var diskVoices = {};
+
   function loadDiskManifest() {
     return fetch(BASE + 'characters.json').then(function (r) { return r.json(); })
-      .then(function (data) { diskChars = data.characters || {}; backgroundFile = data.background || null; })
+      .then(function (data) { diskChars = data.characters || {}; backgroundFile = data.background || null; diskVoices = data.voices || {}; })
       .catch(function () { diskChars = {}; });
   }
 

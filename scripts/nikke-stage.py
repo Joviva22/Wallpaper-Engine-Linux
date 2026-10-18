@@ -23,13 +23,13 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from wpelib import nikke_stage  # noqa: E402
+from wpelib import nikke_stage, nikke_voices  # noqa: E402
 from wpelib.l2d_pack import PackError  # noqa: E402
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=("add", "remove", "list", "install", "search", "background"))
+    parser.add_argument("command", choices=("add", "remove", "list", "install", "search", "background", "voices", "voices-remove"))
     parser.add_argument("codes", nargs="*")
     args = parser.parse_args()
     if args.command == "list":
@@ -46,6 +46,23 @@ def main():
             if not source:
                 raise PackError("No pude detectar el fondo del sistema; indica una imagen: background RUTA.")
             print(f"Fondo: {nikke_stage.set_background(source)} (de {source})")
+        target = nikke_stage.install_wallpaper()
+    elif args.command == "voices":
+        # voices CODE [jp|en|cn]: descarga solo las voces de ese personaje (unos MB), no el zip entero
+        if not args.codes:
+            parser.error("uso: voices CODIGO [jp|en|cn]")
+        code = nikke_stage.normalize_code(args.codes[0])
+        lang = args.codes[1] if len(args.codes) > 1 else None
+        langs = [lang] if lang else nikke_voices.languages_with_voices(code)
+        if not langs:
+            raise PackError(f"{code} no tiene voces publicadas.")
+        for language in langs[:1] if not lang else langs:
+            files = nikke_voices.download_voices(code, language, progress=print)
+            print(f"{code}: {len(files)} voces ({language}).")
+        target = nikke_stage.install_wallpaper()
+    elif args.command == "voices-remove":
+        for code in args.codes:
+            nikke_voices.remove_voices(code)
         target = nikke_stage.install_wallpaper()
     elif args.command == "install":
         target = nikke_stage.install_wallpaper()
