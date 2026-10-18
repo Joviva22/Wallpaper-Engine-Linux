@@ -195,6 +195,73 @@ class RepairTest(unittest.TestCase):
             self.assertEqual(f.read(), before)
         self.assertFalse(os.path.exists(self.pkg + ".bak_original"))
 
+    def test_audio_shader_repair_is_exact_backed_up_and_idempotent(self):
+        import hashlib
+        from unittest import mock
+        raw = b"// fixture\n" * 69 + b"#endif\n" + b"void main() {}\n"
+        files = {"scene.json": b'{"objects": []}',
+                 repair._AUDIO_BARS_SHADER: raw, "unrelated.bin": b"\x00\xff"}
+        build_pkg(self.pkg, files)
+        with open(self.pkg, "rb") as f:
+            original = f.read()
+        with mock.patch.object(repair, "_AUDIO_BARS_BROKEN_SHA256", hashlib.sha256(raw).hexdigest()):
+            ok, msg = repair.attempt_repair("1")
+            self.assertTrue(ok, msg)
+            self.assertIn("barras de audio", msg)
+            self.assertFalse(repair.attempt_repair("1")[0])
+        with open(self.pkg + ".bak_original", "rb") as f:
+            self.assertEqual(f.read(), original)
+        _, _, actual = repair._unpack(self.pkg)
+        self.assertEqual(actual[repair._AUDIO_BARS_SHADER], b"// fixture\n" * 69 + b"void main() {}\n")
+        self.assertEqual(actual["scene.json"], files["scene.json"])
+        self.assertEqual(actual["unrelated.bin"], files["unrelated.bin"])
+
+    def test_unknown_audio_shader_is_not_changed(self):
+        files = {repair._AUDIO_BARS_SHADER: b"#endif\n"}
+        before = dict(files)
+        self.assertFalse(repair._fix_audio_bars_shader(files))
+        self.assertEqual(files, before)
+
+    def test_backup_failure_prevents_pkg_modification(self):
+        from unittest import mock
+        build_pkg(self.pkg, {"scene.json": b'{"objects": [{"text": {}, "padding": "8 8"}]}'})
+        with open(self.pkg, "rb") as f:
+            original = f.read()
+        with mock.patch.object(repair, "_backup_once", side_effect=OSError("disk full")):
+            ok, msg = repair.attempt_repair("1")
+        self.assertFalse(ok)
+        self.assertIn("copia original", msg)
+        with open(self.pkg, "rb") as f:
+            self.assertEqual(f.read(), original)
+
+    def test_fragment_fixes_keep_varyings_and_texel_sizes(self):
+        import hashlib
+        from unittest import mock
+        names = list(repair._KNOWN_FRAGMENT_HASHES)
+        files = {
+            names[0]: b"varying vec2 v_TexCoord;\nvoid main() {\nv_TexCoord.y = 1.0-v_TexCoord.y;\n}",
+            names[1]: b"varying vec4 v_TexCoord;\nvec2 uv = v_TexCoord + vec2(v_TexCoord.z, v_TexCoord.w);",
+            names[2]: b"varying vec2 v_TexCoord;\nvec2 fragPos = v_TexCoord;",
+            names[3]: b"varying vec2 v_TexCoord;\nvoid helper() {v_TexCoord.x += 1.;}\nvoid main() {vec2 waveCoord = v_TexCoord; helper();}",
+        }
+        digests = {name: hashlib.sha256(raw).hexdigest() for name, raw in files.items()}
+        with mock.patch.object(repair, "_KNOWN_FRAGMENT_HASHES", digests):
+            self.assertEqual(len(repair._fix_known_fragment_shaders(files)), 4)
+            self.assertEqual(repair._fix_known_fragment_shaders(files), [])
+        self.assertIn(b"varying vec2 v_TexCoord;", files[names[0]])
+        self.assertIn(b"audioCoord = v_TexCoord.xy;", files[names[0]])
+        self.assertIn(b"audioCoord.y = 1.0-audioCoord.y;", files[names[0]])
+        self.assertIn(b"v_TexCoord.xy + vec2(v_TexCoord.z, v_TexCoord.w)", files[names[1]])
+        self.assertIn(b"vec2 fragPos = v_TexCoord.xy;", files[names[2]])
+        self.assertIn(b"helper() {audioCoord.x += 1.;}", files[names[3]])
+        self.assertIn(b"float waveCoord = 0.0;", files[names[3]])
+
+    def test_unknown_fragment_versions_are_untouched(self):
+        files = {name: b"void main() {}" for name in repair._KNOWN_FRAGMENT_HASHES}
+        before = dict(files)
+        self.assertEqual(repair._fix_known_fragment_shaders(files), [])
+        self.assertEqual(files, before)
+
     def test_no_pkg(self):
         os.remove(self.pkg) if os.path.exists(self.pkg) else None
         ok, _ = repair.attempt_repair("1")

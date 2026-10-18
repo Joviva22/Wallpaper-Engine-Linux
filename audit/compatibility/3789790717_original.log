@@ -1,0 +1,37 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-sa3__qob/library/3789790717
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Video playback speed: 1x
+Cannot load libcuda.so.1
+Resolving require module: LightingV1 in shader genericimage4
+Video playback speed: 1x
+Cannot load libcuda.so.1
+client removed during hook handling
+Resolving require module: LightingV1 in shader genericimage4
+● Video  --vid=1  (h264 1280x960 29.97 fps) [default]
+● Audio  --aid=1  (aac 2ch 44100 Hz 320 kbps) [default]
+Cannot resolve user texture video for pass filesystem error: Cannot find file: Success [video]
+Unknown object type, creating placeholder, empty object: 159
+[ffmpeg/video] h264: Device does not support the VK_KHR_video_decode_queue extension!
+[ffmpeg/video] h264: Failed setup for format vulkan: hwaccel initialisation returned error.
+[ffmpeg/video] h264: no frame!
+[ffmpeg/video] h264: Device does not support the VK_KHR_video_decode_queue extension!
+[ffmpeg/video] h264: Failed setup for format vulkan: hwaccel initialisation returned error.
+[ffmpeg/video] h264: no frame!
+[ffmpeg] CUDA: Cannot load libcuda.so.1
+[ffmpeg] CUDA: Could not dynamically load CUDA
+Using hardware decoding (vaapi-copy).
+AO: [pipewire] 44100Hz stereo 2ch floatp
+VO: [libmpv] 1280x960 nv12
+Stop requested by signal 15
+
+Audio/Video desynchronisation detected! Possible reasons include too slow
+hardware, temporary CPU spikes, broken drivers, and broken files. Audio
+position will not match to the video (see A-V status field).
+Consider trying `--profile=fast` and/or `--hwdec=auto` as they may help.
+
+Video playback speed: 1x
+Cannot load libcuda.so.1
+Resolving require module: LightingV1 in shader genericimage4

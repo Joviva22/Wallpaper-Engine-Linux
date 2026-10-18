@@ -1,0 +1,2294 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-sa3__qob/library/3802742966
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericimage4
+0:108(2): error: initializer of type vec4 cannot be assigned to variable of type vec2
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform float u_MinFreqRange;
+uniform float u_MaxFreqRange;
+uniform float g_AudioSpectrum64Left[64];
+uniform float g_AudioSpectrum64Right[64];
+uniform float u_ReduceValue;
+uniform vec3 u_Color;
+uniform float u_Brightness;
+layout(binding = 0) uniform sampler2D g_Texture0;
+uniform vec2 u_FixedSize;
+uniform float u_Radius;
+uniform float g_Time;
+uniform vec2 g_PointerPosition;
+uniform float u_Speed;
+uniform vec2 g_TexelSize;
+
+in vec4 v_TexCoord;
+out vec4 out_FragColor;
+
+float getFrequency(float x)
+{
+    float left = 0.100000001490116119384765625;
+    float right = 0.100000001490116119384765625;
+    int _129 = int(u_MinFreqRange);
+    for (int i = _129; float(i) < u_MaxFreqRange; i++)
+    {
+        left += g_AudioSpectrum64Left[int(i)];
+        right += g_AudioSpectrum64Right[int(i)];
+    }
+    float volume = (left + right) * 0.5;
+    return abs(volume / u_ReduceValue);
+}
+
+float getFrequency_smooth(float x)
+{
+    float index = floor(x * 128.0) / 128.0;
+    float next = floor((x * 128.0) + 1.0) / 128.0;
+    float param = index;
+    float param_1 = next;
+    return mix(getFrequency(param), getFrequency(param_1), smoothstep(0.0, 1.0, fract(x * 128.0)));
+}
+
+float getFrequency_blend(float x)
+{
+    float param = x;
+    float param_1 = x;
+    return mix(getFrequency(param), getFrequency_smooth(param_1), 0.5);
+}
+
+vec3 circleIllumination(vec2 fragment, float radius)
+{
+    float _distance = length(fragment);
+    float param = 0.0;
+    float ring = 1.0 / abs((_distance - radius) - (getFrequency_smooth(param) / 4.5));
+    vec3 color = vec3(0.0);
+    float angle = atan(fragment.x, fragment.y);
+    color += ((u_Color * ring) * u_Brightness);
+    float param_1 = abs(angle / 3.1415927410125732421875);
+    float frequency = max(0.0, getFrequency_blend(param_1) - 0.0199999995529651641845703125);
+    color *= vec3(frequency);
+    return color;
+}
+
+float luma(vec3 color)
+{
+    return dot(color, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.5));
+}
+
+vec3 ApplyBlending(int blendMode, vec3 A, vec3 B, float opacity)
+{
+    float _47;
+    if (B.x == 0.0)
+    {
+        _47 = B.x;
+    }
+    else
+    {
+        _47 = max(0.0, 1.0 - ((1.0 - A.x) / B.x));
+    }
+    float _67;
+    if (B.y == 0.0)
+    {
+        _67 = B.y;
+    }
+    else
+    {
+        _67 = max(0.0, 1.0 - ((1.0 - A.y) / B.y));
+    }
+    float _86;
+    if (B.z == 0.0)
+    {
+        _86 = B.z;
+    }
+    else
+    {
+        _86 = max(0.0, 1.0 - ((1.0 - A.z) / B.z));
+    }
+    return mix(A, vec3(_47, _67, _86), vec3(opacity));
+}
+
+void main()
+{
+    vec4 albedo = texture(g_Texture0, v_TexCoord.xy);
+    vec2 fragPos = v_TexCoord;
+    fragPos = (fragPos - vec2(0.5)) * 2.0;
+    fragPos.x *= (u_FixedSize.x / u_FixedSize.y);
+    vec3 color = vec3(0.0);
+    vec2 param = fragPos;
+    float param_1 = u_Radius;
+    color += circleIllumination(param, param_1);
+    vec3 param_2 = color;
+    color += vec3(max(0.0, luma(param_2) - 1.0));
+    vec3 param_3 = albedo.xyz;
+    vec3 param_4 = color;
+    float param_5 = 1.0;
+    vec3 _308 = ApplyBlending(3, param_3, param_4, param_5);
+    albedo.x = _308.x;
+    albedo.y = _308.y;
+    albedo.z = _308.z;
+    out_FragColor = vec4(max(albedo.xyz, vec3(0.0)), albedo.w);
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader workshop/2844906964/effects/test_shader
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+out vec4 out_FragColor;
+#define varying in
+#define BLENDMODE 3
+//nclude "common.h"
+//nclude "common_blending.h"
+
+
+uniform vec3 u_Color; // {"default":"1 0 0","material":"Color","type":"color"}
+
+// [COMBO] {"material":"ui_editor_properties_blend_mode","combo":"BLENDMODE","type":"imageblending","default":0}
+
+uniform float g_Time;
+uniform sampler2D g_Texture0; // { "material": "mask", "label": "ui_editor_properties_framebuffer", "hidden": true }
+// uniform float g_AudioSpectrum16Right[16];
+// uniform float g_AudioSpectrum16Left[16];
+uniform vec2 g_PointerPosition;
+
+uniform float u_Brightness; // {"material":"Brightness","default":0.15,"range":[0,1]}
+uniform float u_Speed; // {"material":"Speed","default":0.5,"range":[0,1]}
+
+uniform float g_AudioSpectrum64Right[64];
+uniform float g_AudioSpectrum64Left[64];
+
+uniform float u_ReduceValue; // {"material":"Suppression","default":1,"range":[0.5,10]}
+
+uniform float u_MinFreqRange; // {"material":"Min Freq Range","int":true,"default":0,"range":[0,16]}
+uniform float u_MaxFreqRange; // {"material":"Max Freq Range","int":true,"default":16,"range":[0,16]}
+
+uniform float u_Radius; // {"material":"Radius","default":0.2,"range":[0,1]}
+uniform vec2 u_FixedSize; // {"default":"1 0.59","material":"Fixed Size","position":true}
+
+uniform vec2 g_TexelSize;
+
+varying vec2 v_TexCoord;
+// begin of include from file common.h
+
+#define M_PI 3.14159265359
+#define M_PI_HALF 1.57079632679
+#define M_PI_2 6.28318530718
+
+#define SQRT_2 1.41421356237
+#define SQRT_3 1.73205080756
+
+vec3 hsv2rgb(vec3 c)
+{
+	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	vec3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+vec3 rgb2hsv(vec3 RGB)
+{
+	vec4 P = (RGB.g < RGB.b) ? vec4(RGB.bg, -1.0, 2.0/3.0) : vec4(RGB.gb, 0.0, -1.0/3.0);
+	vec4 Q = (RGB.r < P.x) ? vec4(P.xyw, RGB.r) : vec4(RGB.r, P.yzx);
+	float C = Q.x - min(Q.w, Q.y);
+	float H = abs((Q.w - Q.y) / (6.0 * C + 1e-10) + Q.z);
+
+	vec3 HCV = vec3(H, C, Q.x);
+	float S = HCV.y / (HCV.z + 1e-10);
+	return vec3(HCV.x, S, HCV.z);
+}
+
+vec2 rotateVec2(vec2 v, float r)
+{
+	vec2 cs = vec2(cos(r), sin(r));
+	return vec2(v.x * cs.x - v.y * cs.y, v.x * cs.y + v.y * cs.x);
+}
+
+float greyscale(vec3 color)
+{
+	return dot(color, vec3(0.11, 0.59, 0.3));
+}
+
+// end of included from file common.h
+// begin of include from file common_blending.h
+
+vec4 Desaturate(vec3 color, float Desaturation)
+{
+	vec3 grayXfer = vec3(0.3, 0.59, 0.11);
+	vec3 gray = CAST3(dot(grayXfer, color));
+	return vec4(mix(color, gray, Desaturation), 1.0);
+}
+
+vec3 RGBToHSL(vec3 color)
+{
+#ifdef HDR
+	color = saturate(color);
+#endif
+
+	vec3 hsl;
+	float fmin = min(min(color.r, color.g), color.b);
+	float fmax = max(max(color.r, color.g), color.b);
+	float delta = fmax - fmin;
+	hsl.z = (fmax + fmin) / 2.0;
+
+	if (delta == 0.0)
+	{
+		hsl.x = 0.0;
+		hsl.y = 0.0;
+	}
+	else
+	{
+		if (hsl.z < 0.5)
+			hsl.y = delta / (fmax + fmin);
+		else
+			hsl.y = delta / (2.0 - fmax - fmin);
+		float deltaR = (((fmax - color.r) / 6.0) + (delta / 2.0)) / delta;
+		float deltaG = (((fmax - color.g) / 6.0) + (delta / 2.0)) / delta;
+		float deltaB = (((fmax - color.b) / 6.0) + (delta / 2.0)) / delta;
+		if (color.r == fmax )
+			hsl.x = deltaB - deltaG;
+		else if (color.g == fmax)
+			hsl.x = (1.0 / 3.0) + deltaR - deltaB;
+		else if (color.b == fmax)
+			hsl.x = (2.0 / 3.0) + deltaG - deltaR;
+
+		if (hsl.x < 0.0)
+			hsl.x += 1.0;
+		else if (hsl.x > 1.0)
+			hsl.x -= 1.0;
+	}
+
+	return hsl;
+}
+
+float HueToRGB(float f1, float f2, float hue)
+{
+	if (hue < 0.0)
+		hue += 1.0;
+	else if (hue > 1.0)
+		hue -= 1.0;
+	float res;
+	if ((6.0 * hue) < 1.0)
+		res = f1 + (f2 - f1) * 6.0 * hue;
+	else if ((2.0 * hue) < 1.0)
+		res = f2;
+	else if ((3.0 * hue) < 2.0)
+		res = f1 + (f2 - f1) * ((2.0 / 3.0) - hue) * 6.0;
+	else
+		res = f1;
+	return res;
+}
+
+vec3 HSLToRGB(vec3 hsl)
+{
+	vec3 rgb;
+	if (hsl.y == 0.0)
+		rgb = CAST3(hsl.z);
+	else
+	{
+		float f2;
+		if (hsl.z < 0.5)
+			f2 = hsl.z * (1.0 + hsl.y);
+		else
+			f2 = (hsl.z + hsl.y) - (hsl.y * hsl.z);
+		float f1 = 2.0 * hsl.z - f2;
+		rgb.r = HueToRGB(f1, f2, hsl.x + (1.0/3.0));
+		rgb.g = HueToRGB(f1, f2, hsl.x);
+		rgb.b= HueToRGB(f1, f2, hsl.x - (1.0/3.0));
+	}
+
+	return rgb;
+}
+
+vec3 ContrastSaturationBrightness(vec3 color, float brt, float sat, float con)
+{
+	const float AvgLumR = 0.5;
+	const float AvgLumG = 0.5;
+	const float AvgLumB = 0.5;
+
+	const vec3 LumCoeff = vec3(0.2125, 0.7154, 0.0721);
+
+	vec3 AvgLumin = vec3(AvgLumR, AvgLumG, AvgLumB);
+	vec3 brtColor = color * brt;
+	vec3 intensity = CAST3(dot(brtColor, LumCoeff));
+	vec3 satColor = mix(intensity, brtColor, sat);
+	vec3 conColor = mix(AvgLumin, satColor, con);
+	return conColor;
+}
+
+#define BlendLinearDodgef(base, blend) (base + blend)
+#define BlendLinearBurnf(base, blend) max(base + blend - 1.0, 0.0)
+#define BlendLightenf(base, blend) max(blend, base)
+#define BlendDarkenf(base, blend) min(blend, base)
+#define BlendLinearLightf(base, blend) (blend < 0.5 ? BlendLinearBurnf(base, (2.0 * blend)) : BlendLinearDodgef(base, (2.0 * (blend - 0.5))))
+#define BlendScreenf(base, blend) (1.0 - ((1.0 - base) * (1.0 - blend)))
+#define BlendOverlayf(base, blend) (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)))
+#define BlendSoftLightf(base, blend) ((blend < 0.5) ? (2.0 * base * blend + base * base * (1.0 - 2.0 * blend)) : (sqrt(base) * (2.0 * blend - 1.0) + 2.0 * base * (1.0 - blend)))
+#define BlendColorDodgef(base, blend) ((blend == 1.0) ? blend : min(base / (1.0 - blend), 1.0))
+#define BlendColorBurnf(base, blend) ((blend == 0.0) ? blend : max((1.0 - ((1.0 - base) / blend)), 0.0))
+#define BlendVividLightf(base, blend) ((blend < 0.5) ? BlendColorBurnf(base, (2.0 * blend)) : BlendColorDodgef(base, (2.0 * (blend - 0.5))))
+#define BlendPinLightf(base, blend) ((blend < 0.5) ? BlendDarkenf(base, (2.0 * blend)) : BlendLightenf(base, (2.0 *(blend - 0.5))))
+#define BlendHardMixf(base, blend) ((BlendVividLightf(base, blend) < 0.5) ? 0.0 : 1.0)
+#define BlendReflectf(base, blend) ((blend == 1.0) ? blend : min(base * base / (1.0 - blend), 1.0))
+#define BlendNormal(base, blend) (blend)
+#define BlendLighten BlendLightenf
+#define BlendDarken	 BlendDarkenf
+#define BlendMultiply(base, blend) (base * blend)
+#define BlendAverage(base, blend) ((base + blend) / 2.0)
+#define BlendAdd(base, blend) min(base + blend, CAST3(1.0))
+#define BlendSubstract(base, blend) max(base + blend - CAST3(1.0), CAST3(0.0))
+#define BlendDifference(base, blend) abs(base - blend)
+#define BlendNegation(base, blend) (CAST3(1.0) - abs(CAST3(1.0) - base - blend))
+#define BlendExclusion(base, blend) (base + blend - 2.0 * base * blend)
+#define BlendScreen(base, blend) vec3(BlendScreenf(base.r, blend.r), BlendScreenf(base.g, blend.g), BlendScreenf(base.b, blend.b))
+#define BlendOverlay(base, blend) vec3(BlendOverlayf(base.r, blend.r), BlendOverlayf(base.g, blend.g), BlendOverlayf(base.b, blend.b))
+#define BlendSoftLight(base, blend) vec3(BlendSoftLightf(base.r, blend.r), BlendSoftLightf(base.g, blend.g), BlendSoftLightf(base.b, blend.b))
+#define BlendHardLight(base, blend) BlendOverlay(blend, base)
+#define BlendColorDodge(base, blend) vec3(BlendColorDodgef(base.r, blend.r), BlendColorDodgef(base.g, blend.g), BlendColorDodgef(base.b, blend.b))
+#define BlendColorBurn(base, blend) vec3(BlendColorBurnf(base.r, blend.r), BlendColorBurnf(base.g, blend.g), BlendColorBurnf(base.b, blend.b))
+#define BlendLinearLight(base, blend) vec3(BlendLinearLightf(base.r, blend.r), BlendLinearLightf(base.g, blend.g), BlendLinearLightf(base.b, blend.b))
+#define BlendVividLight(base, blend) vec3(BlendVividLightf(base.r, blend.r), BlendVividLightf(base.g, blend.g), BlendVividLightf(base.b, blend.b))
+#define BlendPinLight(base, blend) vec3(BlendPinLightf(base.r, blend.r), BlendPinLightf(base.g, blend.g), BlendPinLightf(base.b, blend.b))
+#define BlendHardMix(base, blend) vec3(BlendHardMixf(base.r, blend.r), BlendHardMixf(base.g, blend.g), BlendHardMixf(base.b, blend.b))
+#define BlendReflect(base, blend) vec3(BlendReflectf(base.r, blend.r), BlendReflectf(base.g, blend.g), BlendReflectf(base.b, blend.b))
+#define BlendGlow(base, blend) BlendReflect(blend, base)
+#define BlendPhoenix(base, blend) (min(base, blend) - max(base, blend) + CAST3(1.0))
+#define BlendOpacity(base, blend, F, O) mix(base, F(base, blend), O)
+#define BlendLinearDodge(base, blend) min(base + blend, CAST3(1.0))
+#define BlendLinearBurn(base, blend) max(base + blend - CAST3(1.0), CAST3(0.0))
+#define BlendTint(base, blend) (CAST3(max(base.x, max(base.y, base.z))) * blend)
+
+vec3 BlendHue(vec3 base, vec3 blend)
+{
+	vec3 baseHSL = RGBToHSL(base);
+	return HSLToRGB(vec3(RGBToHSL(blend).r, baseHSL.g, baseHSL.b));
+}
+
+vec3 BlendSaturation(vec3 base, vec3 blend)
+{
+	vec3 baseHSL = RGBToHSL(base);
+	return HSLToRGB(vec3(baseHSL.r, RGBToHSL(blend).g, baseHSL.b));
+}
+
+vec3 BlendColor(vec3 base, vec3 blend)
+{
+	vec3 blendHSL = RGBToHSL(blend);
+	return HSLToRGB(vec3(blendHSL.r, blendHSL.g, RGBToHSL(base).b));
+}
+
+vec3 BlendLuminosity(vec3 base, vec3 blend)
+{
+	vec3 baseHSL = RGBToHSL(base);
+	return HSLToRGB(vec3(baseHSL.r, baseHSL.g, RGBToHSL(blend).b));
+}
+
+vec3 ApplyBlending(const int blendMode, in vec3 A, in vec3 B, in float opacity)
+{
+#if BLENDMODE == 1
+	return mix(A,BlendDarken(A,B),opacity);
+#endif
+#if BLENDMODE == 2
+	return mix(A,BlendMultiply(A,B),opacity);
+#endif
+#if BLENDMODE == 3
+	return mix(A,BlendColorBurn(A,B),opacity);
+#endif
+#if BLENDMODE == 4
+	return mix(A,BlendSubstract(A,B),opacity);
+#endif
+#if BLENDMODE == 5
+	return min(A, B);
+#endif
+#if BLENDMODE == 6
+	return mix(A,BlendLighten(A,B),opacity);
+#endif
+#if BLENDMODE == 7
+	return mix(A,BlendScreen(A,B),opacity);
+#endif
+#if BLENDMODE == 8
+	return mix(A,BlendColorDodge(A,B),opacity);
+#endif
+#if BLENDMODE == 9
+	return mix(A,BlendAdd(A,B),opacity);
+#endif
+#if BLENDMODE == 10
+	return max(A, B);
+#endif
+#if BLENDMODE == 11
+	return mix(A,BlendOverlay(A,B),opacity);
+#endif
+#if BLENDMODE == 12
+	return mix(A,BlendSoftLight(A,B),opacity);
+#endif
+#if BLENDMODE == 13
+	return mix(A,BlendHardLight(A,B),opacity);
+#endif
+#if BLENDMODE == 14
+	return mix(A,BlendVividLight(A,B),opacity);
+#endif
+#if BLENDMODE == 15
+	return mix(A,BlendLinearLight(A,B),opacity);
+#endif
+#if BLENDMODE == 16
+	return mix(A,BlendPinLight(A,B),opacity);
+#endif
+#if BLENDMODE == 17
+	return mix(A,BlendHardMix(A,B),opacity);
+#endif
+#if BLENDMODE == 18
+	return mix(A,BlendDifference(A,B),opacity);
+#endif
+#if BLENDMODE == 19
+	return mix(A,BlendExclusion(A,B),opacity);
+#endif
+#if BLENDMODE == 20
+	return mix(A,BlendSubstract(A,B),opacity);
+#endif
+#if BLENDMODE == 21
+	return mix(A,BlendReflect(A,B),opacity);
+#endif
+#if BLENDMODE == 22
+	return mix(A,BlendGlow(A,B),opacity);
+#endif
+#if BLENDMODE == 23
+	return mix(A,BlendPhoenix(A,B),opacity);
+#endif
+#if BLENDMODE == 24
+	return mix(A,BlendAverage(A,B),opacity);
+#endif
+#if BLENDMODE == 25
+	return mix(A,BlendNegation(A,B),opacity);
+#endif
+#if BLENDMODE == 26
+	return mix(A,BlendHue(A,B),opacity);
+#endif
+#if BLENDMODE == 27
+	return mix(A,BlendSaturation(A,B),opacity);
+#endif
+#if BLENDMODE == 28
+	return mix(A,BlendColor(A,B),opacity);
+#endif
+#if BLENDMODE == 29
+	return mix(A,BlendLuminosity(A,B),opacity);
+#endif
+#if BLENDMODE == 30
+	return mix(A,BlendTint(A,B),opacity);
+#endif
+#if BLENDMODE == 31
+	return A+B*opacity;
+#endif
+#if BLENDMODE == 32
+	return mix(A,A+A*B,opacity);
+#endif
+	return mix(A,BlendNormal(A,B),opacity);
+}
+
+// end of included from file common_blending.h
+
+
+#define BEATMOVE 1
+
+const float FREQ_RANGE = 128.0;
+const float PI = 3.1415;
+const float RADIUS = 0.2;
+const float BRIGHTNESS = 0.15;
+const float SPEED = 0.5;
+
+float luma(vec3 color) {
+	return dot(color, vec3(0.299, 0.587, 0.5));
+}
+
+float getFrequency(float x) {
+	float left = 0.1;
+	float right = 0.1;
+
+	for (int i = u_MinFreqRange; i < u_MaxFreqRange; i++) {
+		left += g_AudioSpectrum64Left[i];
+		right += g_AudioSpectrum64Right[i];
+	}
+
+	float volume = (left + right) * 0.5;
+
+	return abs(volume / u_ReduceValue);
+	// return abs(sin(g_Time));
+	// return texSample2D(g_Texture0, vec2(floor(((left + right) * 0.5) * FREQ_RANGE + 1.0) / FREQ_RANGE, 0.25)).x + 0.06;
+}
+
+float getFrequency_smooth(float x) {
+	float index = floor(x * FREQ_RANGE) / FREQ_RANGE;
+	float next = floor(x * FREQ_RANGE + 1.0) / FREQ_RANGE;
+	return mix(getFrequency(index), getFrequency(next), smoothstep(0.0, 1.0, frac(x * FREQ_RANGE)));
+}
+
+float getFrequency_blend(float x) {
+	return mix(getFrequency(x), getFrequency_smooth(x), 0.5);
+}
+
+vec3 circleIllumination(vec2 fragment, float radius) {
+	float distance = length(fragment);
+	float ring = 1.0 / abs(distance - radius - (getFrequency_smooth(0.0) / 4.50));
+
+	// float brightness = distance < radius ? u_Brightness * 0.3 : u_Brightness;
+
+	vec3 color = CAST3(0.0);
+
+	float angle = atan2(fragment.x, fragment.y);
+	// color += hsv2rgb(vec3((angle + g_Time * 2.5) / (M_PI * 2.0), 1.0, 1.0)) * ring * u_Brightness;
+	color += u_Color * ring * u_Brightness;
+
+	float frequency = max(getFrequency_blend(abs(angle / M_PI)) - 0.02, 0.0);
+	color *= frequency;
+
+	// Black halo
+	// color *= smoothstep(radius * 0.5, radius, distance);
+
+	return color;
+}
+
+vec3 doLine(vec2 fragment, float radius, float x) {
+	vec3 col = hsv2rgb(vec3(x * 0.23 + g_Time * 0.12, 1.0, 1.0));
+
+	float freq = abs(fragment.x * 0.5);
+
+	col *= (1.0 / abs(fragment.y)) * u_Brightness * getFrequency(freq);
+	col = col * smoothstep(radius, radius * 1.8, abs(fragment.x));
+
+	return col;
+}
+
+void main() {
+	vec4 albedo = texSample2D(g_Texture0, v_TexCoord.xy);
+	vec2 fragPos = v_TexCoord;
+	fragPos = (fragPos - 0.5) * 2.0;
+	fragPos.x *= u_FixedSize.x / u_FixedSize.y;
+
+	vec3 color = vec3(0.0, 0.0, 0.0);
+	color += circleIllumination(fragPos, u_Radius);
+
+	color += max(luma(color) - 1.0, 0.0);
+	albedo.rgb = ApplyBlending(BLENDMODE, albedo.rgb, color, 1.0);
+
+	out_FragColor = vec4(max(0, albedo.rgb), albedo.a);
+}
+
+#endif
+Failed to setup object 717: 0:108(2): error: initializer of type vec4 cannot be assigned to variable of type vec2
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform float u_MinFreqRange;
+uniform float u_MaxFreqRange;
+uniform float g_AudioSpectrum64Left[64];
+uniform float g_AudioSpectrum64Right[64];
+uniform float u_ReduceValue;
+uniform vec3 u_Color;
+uniform float u_Brightness;
+layout(binding = 0) uniform sampler2D g_Texture0;
+uniform vec2 u_FixedSize;
+uniform float u_Radius;
+uniform float g_Time;
+uniform vec2 g_PointerPosition;
+uniform float u_Speed;
+uniform vec2 g_TexelSize;
+
+in vec4 v_TexCoord;
+out vec4 out_FragColor;
+
+float getFrequency(float x)
+{
+    float left = 0.100000001490116119384765625;
+    float right = 0.100000001490116119384765625;
+    int _129 = int(u_MinFreqRange);
+    for (int i = _129; float(i) < u_MaxFreqRange; i++)
+    {
+        left += g_AudioSpectrum64Left[int(i)];
+        right += g_AudioSpectrum64Right[int(i)];
+    }
+    float volume = (left + right) * 0.5;
+    return abs(volume / u_ReduceValue);
+}
+
+float getFrequency_smooth(float x)
+{
+    float index = floor(x * 128.0) / 128.0;
+    float next = floor((x * 128.0) + 1.0) / 128.0;
+    float param = index;
+    float param_1 = next;
+    return mix(getFrequency(param), getFrequency(param_1), smoothstep(0.0, 1.0, fract(x * 128.0)));
+}
+
+float getFrequency_blend(float x)
+{
+    float param = x;
+    float param_1 = x;
+    return mix(getFrequency(param), getFrequency_smooth(param_1), 0.5);
+}
+
+vec3 circleIllumination(vec2 fragment, float radius)
+{
+    float _distance = length(fragment);
+    float param = 0.0;
+    float ring = 1.0 / abs((_distance - radius) - (getFrequency_smooth(param) / 4.5));
+    vec3 color = vec3(0.0);
+    float angle = atan(fragment.x, fragment.y);
+    color += ((u_Color * ring) * u_Brightness);
+    float param_1 = abs(angle / 3.1415927410125732421875);
+    float frequency = max(0.0, getFrequency_blend(param_1) - 0.0199999995529651641845703125);
+    color *= vec3(frequency);
+    return color;
+}
+
+float luma(vec3 color)
+{
+    return dot(color, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.5));
+}
+
+vec3 ApplyBlending(int blendMode, vec3 A, vec3 B, float opacity)
+{
+    float _47;
+    if (B.x == 0.0)
+    {
+        _47 = B.x;
+    }
+    else
+    {
+        _47 = max(0.0, 1.0 - ((1.0 - A.x) / B.x));
+    }
+    float _67;
+    if (B.y == 0.0)
+    {
+        _67 = B.y;
+    }
+    else
+    {
+        _67 = max(0.0, 1.0 - ((1.0 - A.y) / B.y));
+    }
+    float _86;
+    if (B.z == 0.0)
+    {
+        _86 = B.z;
+    }
+    else
+    {
+        _86 = max(0.0, 1.0 - ((1.0 - A.z) / B.z));
+    }
+    return mix(A, vec3(_47, _67, _86), vec3(opacity));
+}
+
+void main()
+{
+    vec4 albedo = texture(g_Texture0, v_TexCoord.xy);
+    vec2 fragPos = v_TexCoord;
+    fragPos = (fragPos - vec2(0.5)) * 2.0;
+    fragPos.x *= (u_FixedSize.x / u_FixedSize.y);
+    vec3 color = vec3(0.0);
+    vec2 param = fragPos;
+    float param_1 = u_Radius;
+    color += circleIllumination(param, param_1);
+    vec3 param_2 = color;
+    color += vec3(max(0.0, luma(param_2) - 1.0));
+    vec3 param_3 = albedo.xyz;
+    vec3 param_4 = color;
+    float param_5 = 1.0;
+    vec3 _308 = ApplyBlending(3, param_3, param_4, param_5);
+    albedo.x = _308.x;
+    albedo.y = _308.y;
+    albedo.z = _308.z;
+    out_FragColor = vec4(max(albedo.xyz, vec3(0.0)), albedo.w);
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader workshop/2844906964/effects/test_shader
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+out vec4 out_FragColor;
+#define varying in
+#define BLENDMODE 3
+//nclude "common.h"
+//nclude "common_blending.h"
+
+
+uniform vec3 u_Color; // {"default":"1 0 0","material":"Color","type":"color"}
+
+// [COMBO] {"material":"ui_editor_properties_blend_mode","combo":"BLENDMODE","type":"imageblending","default":0}
+
+uniform float g_Time;
+uniform sampler2D g_Texture0; // { "material": "mask", "label": "ui_editor_properties_framebuffer", "hidden": true }
+// uniform float g_AudioSpectrum16Right[16];
+// uniform float g_AudioSpectrum16Left[16];
+uniform vec2 g_PointerPosition;
+
+uniform float u_Brightness; // {"material":"Brightness","default":0.15,"range":[0,1]}
+uniform float u_Speed; // {"material":"Speed","default":0.5,"range":[0,1]}
+
+uniform float g_AudioSpectrum64Right[64];
+uniform float g_AudioSpectrum64Left[64];
+
+uniform float u_ReduceValue; // {"material":"Suppression","default":1,"range":[0.5,10]}
+
+uniform float u_MinFreqRange; // {"material":"Min Freq Range","int":true,"default":0,"range":[0,16]}
+uniform float u_MaxFreqRange; // {"material":"Max Freq Range","int":true,"default":16,"range":[0,16]}
+
+uniform float u_Radius; // {"material":"Radius","default":0.2,"range":[0,1]}
+uniform vec2 u_FixedSize; // {"default":"1 0.59","material":"Fixed Size","position":true}
+
+uniform vec2 g_TexelSize;
+
+varying vec2 v_TexCoord;
+// begin of include from file common.h
+
+#define M_PI 3.14159265359
+#define M_PI_HALF 1.57079632679
+#define M_PI_2 6.28318530718
+
+#define SQRT_2 1.41421356237
+#define SQRT_3 1.73205080756
+
+vec3 hsv2rgb(vec3 c)
+{
+	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	vec3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+vec3 rgb2hsv(vec3 RGB)
+{
+	vec4 P = (RGB.g < RGB.b) ? vec4(RGB.bg, -1.0, 2.0/3.0) : vec4(RGB.gb, 0.0, -1.0/3.0);
+	vec4 Q = (RGB.r < P.x) ? vec4(P.xyw, RGB.r) : vec4(RGB.r, P.yzx);
+	float C = Q.x - min(Q.w, Q.y);
+	float H = abs((Q.w - Q.y) / (6.0 * C + 1e-10) + Q.z);
+
+	vec3 HCV = vec3(H, C, Q.x);
+	float S = HCV.y / (HCV.z + 1e-10);
+	return vec3(HCV.x, S, HCV.z);
+}
+
+vec2 rotateVec2(vec2 v, float r)
+{
+	vec2 cs = vec2(cos(r), sin(r));
+	return vec2(v.x * cs.x - v.y * cs.y, v.x * cs.y + v.y * cs.x);
+}
+
+float greyscale(vec3 color)
+{
+	return dot(color, vec3(0.11, 0.59, 0.3));
+}
+
+// end of included from file common.h
+// begin of include from file common_blending.h
+
+vec4 Desaturate(vec3 color, float Desaturation)
+{
+	vec3 grayXfer = vec3(0.3, 0.59, 0.11);
+	vec3 gray = CAST3(dot(grayXfer, color));
+	return vec4(mix(color, gray, Desaturation), 1.0);
+}
+
+vec3 RGBToHSL(vec3 color)
+{
+#ifdef HDR
+	color = saturate(color);
+#endif
+
+	vec3 hsl;
+	float fmin = min(min(color.r, color.g), color.b);
+	float fmax = max(max(color.r, color.g), color.b);
+	float delta = fmax - fmin;
+	hsl.z = (fmax + fmin) / 2.0;
+
+	if (delta == 0.0)
+	{
+		hsl.x = 0.0;
+		hsl.y = 0.0;
+	}
+	else
+	{
+		if (hsl.z < 0.5)
+			hsl.y = delta / (fmax + fmin);
+		else
+			hsl.y = delta / (2.0 - fmax - fmin);
+		float deltaR = (((fmax - color.r) / 6.0) + (delta / 2.0)) / delta;
+		float deltaG = (((fmax - color.g) / 6.0) + (delta / 2.0)) / delta;
+		float deltaB = (((fmax - color.b) / 6.0) + (delta / 2.0)) / delta;
+		if (color.r == fmax )
+			hsl.x = deltaB - deltaG;
+		else if (color.g == fmax)
+			hsl.x = (1.0 / 3.0) + deltaR - deltaB;
+		else if (color.b == fmax)
+			hsl.x = (2.0 / 3.0) + deltaG - deltaR;
+
+		if (hsl.x < 0.0)
+			hsl.x += 1.0;
+		else if (hsl.x > 1.0)
+			hsl.x -= 1.0;
+	}
+
+	return hsl;
+}
+
+float HueToRGB(float f1, float f2, float hue)
+{
+	if (hue < 0.0)
+		hue += 1.0;
+	else if (hue > 1.0)
+		hue -= 1.0;
+	float res;
+	if ((6.0 * hue) < 1.0)
+		res = f1 + (f2 - f1) * 6.0 * hue;
+	else if ((2.0 * hue) < 1.0)
+		res = f2;
+	else if ((3.0 * hue) < 2.0)
+		res = f1 + (f2 - f1) * ((2.0 / 3.0) - hue) * 6.0;
+	else
+		res = f1;
+	return res;
+}
+
+vec3 HSLToRGB(vec3 hsl)
+{
+	vec3 rgb;
+	if (hsl.y == 0.0)
+		rgb = CAST3(hsl.z);
+	else
+	{
+		float f2;
+		if (hsl.z < 0.5)
+			f2 = hsl.z * (1.0 + hsl.y);
+		else
+			f2 = (hsl.z + hsl.y) - (hsl.y * hsl.z);
+		float f1 = 2.0 * hsl.z - f2;
+		rgb.r = HueToRGB(f1, f2, hsl.x + (1.0/3.0));
+		rgb.g = HueToRGB(f1, f2, hsl.x);
+		rgb.b= HueToRGB(f1, f2, hsl.x - (1.0/3.0));
+	}
+
+	return rgb;
+}
+
+vec3 ContrastSaturationBrightness(vec3 color, float brt, float sat, float con)
+{
+	const float AvgLumR = 0.5;
+	const float AvgLumG = 0.5;
+	const float AvgLumB = 0.5;
+
+	const vec3 LumCoeff = vec3(0.2125, 0.7154, 0.0721);
+
+	vec3 AvgLumin = vec3(AvgLumR, AvgLumG, AvgLumB);
+	vec3 brtColor = color * brt;
+	vec3 intensity = CAST3(dot(brtColor, LumCoeff));
+	vec3 satColor = mix(intensity, brtColor, sat);
+	vec3 conColor = mix(AvgLumin, satColor, con);
+	return conColor;
+}
+
+#define BlendLinearDodgef(base, blend) (base + blend)
+#define BlendLinearBurnf(base, blend) max(base + blend - 1.0, 0.0)
+#define BlendLightenf(base, blend) max(blend, base)
+#define BlendDarkenf(base, blend) min(blend, base)
+#define BlendLinearLightf(base, blend) (blend < 0.5 ? BlendLinearBurnf(base, (2.0 * blend)) : BlendLinearDodgef(base, (2.0 * (blend - 0.5))))
+#define BlendScreenf(base, blend) (1.0 - ((1.0 - base) * (1.0 - blend)))
+#define BlendOverlayf(base, blend) (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)))
+#define BlendSoftLightf(base, blend) ((blend < 0.5) ? (2.0 * base * blend + base * base * (1.0 - 2.0 * blend)) : (sqrt(base) * (2.0 * blend - 1.0) + 2.0 * base * (1.0 - blend)))
+#define BlendColorDodgef(base, blend) ((blend == 1.0) ? blend : min(base / (1.0 - blend), 1.0))
+#define BlendColorBurnf(base, blend) ((blend == 0.0) ? blend : max((1.0 - ((1.0 - base) / blend)), 0.0))
+#define BlendVividLightf(base, blend) ((blend < 0.5) ? BlendColorBurnf(base, (2.0 * blend)) : BlendColorDodgef(base, (2.0 * (blend - 0.5))))
+#define BlendPinLightf(base, blend) ((blend < 0.5) ? BlendDarkenf(base, (2.0 * blend)) : BlendLightenf(base, (2.0 *(blend - 0.5))))
+#define BlendHardMixf(base, blend) ((BlendVividLightf(base, blend) < 0.5) ? 0.0 : 1.0)
+#define BlendReflectf(base, blend) ((blend == 1.0) ? blend : min(base * base / (1.0 - blend), 1.0))
+#define BlendNormal(base, blend) (blend)
+#define BlendLighten BlendLightenf
+#define BlendDarken	 BlendDarkenf
+#define BlendMultiply(base, blend) (base * blend)
+#define BlendAverage(base, blend) ((base + blend) / 2.0)
+#define BlendAdd(base, blend) min(base + blend, CAST3(1.0))
+#define BlendSubstract(base, blend) max(base + blend - CAST3(1.0), CAST3(0.0))
+#define BlendDifference(base, blend) abs(base - blend)
+#define BlendNegation(base, blend) (CAST3(1.0) - abs(CAST3(1.0) - base - blend))
+#define BlendExclusion(base, blend) (base + blend - 2.0 * base * blend)
+#define BlendScreen(base, blend) vec3(BlendScreenf(base.r, blend.r), BlendScreenf(base.g, blend.g), BlendScreenf(base.b, blend.b))
+#define BlendOverlay(base, blend) vec3(BlendOverlayf(base.r, blend.r), BlendOverlayf(base.g, blend.g), BlendOverlayf(base.b, blend.b))
+#define BlendSoftLight(base, blend) vec3(BlendSoftLightf(base.r, blend.r), BlendSoftLightf(base.g, blend.g), BlendSoftLightf(base.b, blend.b))
+#define BlendHardLight(base, blend) BlendOverlay(blend, base)
+#define BlendColorDodge(base, blend) vec3(BlendColorDodgef(base.r, blend.r), BlendColorDodgef(base.g, blend.g), BlendColorDodgef(base.b, blend.b))
+#define BlendColorBurn(base, blend) vec3(BlendColorBurnf(base.r, blend.r), BlendColorBurnf(base.g, blend.g), BlendColorBurnf(base.b, blend.b))
+#define BlendLinearLight(base, blend) vec3(BlendLinearLightf(base.r, blend.r), BlendLinearLightf(base.g, blend.g), BlendLinearLightf(base.b, blend.b))
+#define BlendVividLight(base, blend) vec3(BlendVividLightf(base.r, blend.r), BlendVividLightf(base.g, blend.g), BlendVividLightf(base.b, blend.b))
+#define BlendPinLight(base, blend) vec3(BlendPinLightf(base.r, blend.r), BlendPinLightf(base.g, blend.g), BlendPinLightf(base.b, blend.b))
+#define BlendHardMix(base, blend) vec3(BlendHardMixf(base.r, blend.r), BlendHardMixf(base.g, blend.g), BlendHardMixf(base.b, blend.b))
+#define BlendReflect(base, blend) vec3(BlendReflectf(base.r, blend.r), BlendReflectf(base.g, blend.g), BlendReflectf(base.b, blend.b))
+#define BlendGlow(base, blend) BlendReflect(blend, base)
+#define BlendPhoenix(base, blend) (min(base, blend) - max(base, blend) + CAST3(1.0))
+#define BlendOpacity(base, blend, F, O) mix(base, F(base, blend), O)
+#define BlendLinearDodge(base, blend) min(base + blend, CAST3(1.0))
+#define BlendLinearBurn(base, blend) max(base + blend - CAST3(1.0), CAST3(0.0))
+#define BlendTint(base, blend) (CAST3(max(base.x, max(base.y, base.z))) * blend)
+
+vec3 BlendHue(vec3 base, vec3 blend)
+{
+	vec3 baseHSL = RGBToHSL(base);
+	return HSLToRGB(vec3(RGBToHSL(blend).r, baseHSL.g, baseHSL.b));
+}
+
+vec3 BlendSaturation(vec3 base, vec3 blend)
+{
+	vec3 baseHSL = RGBToHSL(base);
+	return HSLToRGB(vec3(baseHSL.r, RGBToHSL(blend).g, baseHSL.b));
+}
+
+vec3 BlendColor(vec3 base, vec3 blend)
+{
+	vec3 blendHSL = RGBToHSL(blend);
+	return HSLToRGB(vec3(blendHSL.r, blendHSL.g, RGBToHSL(base).b));
+}
+
+vec3 BlendLuminosity(vec3 base, vec3 blend)
+{
+	vec3 baseHSL = RGBToHSL(base);
+	return HSLToRGB(vec3(baseHSL.r, baseHSL.g, RGBToHSL(blend).b));
+}
+
+vec3 ApplyBlending(const int blendMode, in vec3 A, in vec3 B, in float opacity)
+{
+#if BLENDMODE == 1
+	return mix(A,BlendDarken(A,B),opacity);
+#endif
+#if BLENDMODE == 2
+	return mix(A,BlendMultiply(A,B),opacity);
+#endif
+#if BLENDMODE == 3
+	return mix(A,BlendColorBurn(A,B),opacity);
+#endif
+#if BLENDMODE == 4
+	return mix(A,BlendSubstract(A,B),opacity);
+#endif
+#if BLENDMODE == 5
+	return min(A, B);
+#endif
+#if BLENDMODE == 6
+	return mix(A,BlendLighten(A,B),opacity);
+#endif
+#if BLENDMODE == 7
+	return mix(A,BlendScreen(A,B),opacity);
+#endif
+#if BLENDMODE == 8
+	return mix(A,BlendColorDodge(A,B),opacity);
+#endif
+#if BLENDMODE == 9
+	return mix(A,BlendAdd(A,B),opacity);
+#endif
+#if BLENDMODE == 10
+	return max(A, B);
+#endif
+#if BLENDMODE == 11
+	return mix(A,BlendOverlay(A,B),opacity);
+#endif
+#if BLENDMODE == 12
+	return mix(A,BlendSoftLight(A,B),opacity);
+#endif
+#if BLENDMODE == 13
+	return mix(A,BlendHardLight(A,B),opacity);
+#endif
+#if BLENDMODE == 14
+	return mix(A,BlendVividLight(A,B),opacity);
+#endif
+#if BLENDMODE == 15
+	return mix(A,BlendLinearLight(A,B),opacity);
+#endif
+#if BLENDMODE == 16
+	return mix(A,BlendPinLight(A,B),opacity);
+#endif
+#if BLENDMODE == 17
+	return mix(A,BlendHardMix(A,B),opacity);
+#endif
+#if BLENDMODE == 18
+	return mix(A,BlendDifference(A,B),opacity);
+#endif
+#if BLENDMODE == 19
+	return mix(A,BlendExclusion(A,B),opacity);
+#endif
+#if BLENDMODE == 20
+	return mix(A,BlendSubstract(A,B),opacity);
+#endif
+#if BLENDMODE == 21
+	return mix(A,BlendReflect(A,B),opacity);
+#endif
+#if BLENDMODE == 22
+	return mix(A,BlendGlow(A,B),opacity);
+#endif
+#if BLENDMODE == 23
+	return mix(A,BlendPhoenix(A,B),opacity);
+#endif
+#if BLENDMODE == 24
+	return mix(A,BlendAverage(A,B),opacity);
+#endif
+#if BLENDMODE == 25
+	return mix(A,BlendNegation(A,B),opacity);
+#endif
+#if BLENDMODE == 26
+	return mix(A,BlendHue(A,B),opacity);
+#endif
+#if BLENDMODE == 27
+	return mix(A,BlendSaturation(A,B),opacity);
+#endif
+#if BLENDMODE == 28
+	return mix(A,BlendColor(A,B),opacity);
+#endif
+#if BLENDMODE == 29
+	return mix(A,BlendLuminosity(A,B),opacity);
+#endif
+#if BLENDMODE == 30
+	return mix(A,BlendTint(A,B),opacity);
+#endif
+#if BLENDMODE == 31
+	return A+B*opacity;
+#endif
+#if BLENDMODE == 32
+	return mix(A,A+A*B,opacity);
+#endif
+	return mix(A,BlendNormal(A,B),opacity);
+}
+
+// end of included from file common_blending.h
+
+
+#define BEATMOVE 1
+
+const float FREQ_RANGE = 128.0;
+const float PI = 3.1415;
+const float RADIUS = 0.2;
+const float BRIGHTNESS = 0.15;
+const float SPEED = 0.5;
+
+float luma(vec3 color) {
+	return dot(color, vec3(0.299, 0.587, 0.5));
+}
+
+float getFrequency(float x) {
+	float left = 0.1;
+	float right = 0.1;
+
+	for (int i = u_MinFreqRange; i < u_MaxFreqRange; i++) {
+		left += g_AudioSpectrum64Left[i];
+		right += g_AudioSpectrum64Right[i];
+	}
+
+	float volume = (left + right) * 0.5;
+
+	return abs(volume / u_ReduceValue);
+	// return abs(sin(g_Time));
+	// return texSample2D(g_Texture0, vec2(floor(((left + right) * 0.5) * FREQ_RANGE + 1.0) / FREQ_RANGE, 0.25)).x + 0.06;
+}
+
+float getFrequency_smooth(float x) {
+	float index = floor(x * FREQ_RANGE) / FREQ_RANGE;
+	float next = floor(x * FREQ_RANGE + 1.0) / FREQ_RANGE;
+	return mix(getFrequency(index), getFrequency(next), smoothstep(0.0, 1.0, frac(x * FREQ_RANGE)));
+}
+
+float getFrequency_blend(float x) {
+	return mix(getFrequency(x), getFrequency_smooth(x), 0.5);
+}
+
+vec3 circleIllumination(vec2 fragment, float radius) {
+	float distance = length(fragment);
+	float ring = 1.0 / abs(distance - radius - (getFrequency_smooth(0.0) / 4.50));
+
+	// float brightness = distance < radius ? u_Brightness * 0.3 : u_Brightness;
+
+	vec3 color = CAST3(0.0);
+
+	float angle = atan2(fragment.x, fragment.y);
+	// color += hsv2rgb(vec3((angle + g_Time * 2.5) / (M_PI * 2.0), 1.0, 1.0)) * ring * u_Brightness;
+	color += u_Color * ring * u_Brightness;
+
+	float frequency = max(getFrequency_blend(abs(angle / M_PI)) - 0.02, 0.0);
+	color *= frequency;
+
+	// Black halo
+	// color *= smoothstep(radius * 0.5, radius, distance);
+
+	return color;
+}
+
+vec3 doLine(vec2 fragment, float radius, float x) {
+	vec3 col = hsv2rgb(vec3(x * 0.23 + g_Time * 0.12, 1.0, 1.0));
+
+	float freq = abs(fragment.x * 0.5);
+
+	col *= (1.0 / abs(fragment.y)) * u_Brightness * getFrequency(freq);
+	col = col * smoothstep(radius, radius * 1.8, abs(fragment.x));
+
+	return col;
+}
+
+void main() {
+	vec4 albedo = texSample2D(g_Texture0, v_TexCoord.xy);
+	vec2 fragPos = v_TexCoord;
+	fragPos = (fragPos - 0.5) * 2.0;
+	fragPos.x *= u_FixedSize.x / u_FixedSize.y;
+
+	vec3 color = vec3(0.0, 0.0, 0.0);
+	color += circleIllumination(fragPos, u_Radius);
+
+	color += max(luma(color) - 1.0, 0.0);
+	albedo.rgb = ApplyBlending(BLENDMODE, albedo.rgb, color, 1.0);
+
+	out_FragColor = vec4(max(0, albedo.rgb), albedo.a);
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+0:79(30): warning: `param_9' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationForward;
+uniform vec4 g_RenderVar1;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+
+in vec2 a_TexCoordC2;
+in vec4 a_TexCoordVec4;
+in vec3 a_Position;
+out vec4 v_TexCoord;
+in vec4 a_TexCoordVec4C1;
+out float v_TexCoordBlend;
+out vec4 v_Color;
+in vec4 a_Color;
+
+void ComputeParticleTangents(vec3 rotation, out vec3 right, out vec3 up)
+{
+    vec3 rCos = cos(rotation);
+    vec3 rSin = sin(rotation);
+    mat3 mRotation = mat3(vec3(rCos.y, 0.0, rSin.y), vec3(0.0, 1.0, 0.0), vec3(-rSin.y, 0.0, rCos.y)) * (mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, rCos.x, -rSin.x), vec3(0.0, rSin.x, rCos.x)) * mat3(vec3(rCos.z, -rSin.z, 0.0), vec3(rSin.z, rCos.z, 0.0), vec3(0.0, 0.0, 1.0)));
+    mRotation = mat3(vec3(g_OrientationRight), vec3(g_OrientationUp), vec3(g_OrientationForward)) * mRotation;
+    right = mRotation * vec3(1.0, 0.0, 0.0);
+    up = mRotation * vec3(0.0, 1.0, 0.0);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeSpriteFrame(float lifetime, inout vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+    float numFrames = g_RenderVar1.z;
+    float frameWidth = g_RenderVar1.x;
+    float frameHeight = g_RenderVar1.y;
+    float currentFrame = floor(lifetime * numFrames);
+    float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+    uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+    uvs.x = fract(currentFrame * frameWidth);
+    uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+    uvs.z = fract(nextFrame * frameWidth);
+    frameBlend = fract(lifetime * numFrames);
+    uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void main()
+{
+    float textureRatio = g_RenderVar1.w;
+    vec3 param = vec3(a_TexCoordC2, a_TexCoordVec4.z);
+    vec3 param_1;
+    vec3 param_2;
+    ComputeParticleTangents(param, param_1, param_2);
+    vec3 right = param_1;
+    vec3 up = param_2;
+    vec2 param_3 = a_TexCoordVec4.xy;
+    float param_4 = textureRatio;
+    vec4 param_5 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_6 = right;
+    vec3 param_7 = up;
+    vec3 position = ComputeParticlePosition(param_3, param_4, param_5, param_6, param_7);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    float param_8 = fract(a_TexCoordVec4C1.w);
+    vec4 param_9;
+    vec2 param_10;
+    float param_11;
+    ComputeSpriteFrame(param_8, param_9, param_10, param_11);
+    v_TexCoord = param_9;
+    vec2 uvOffsets = param_10;
+    v_TexCoordBlend = param_11;
+    uvOffsets *= step(vec2(0.001000000047497451305389404296875), a_TexCoordVec4.xy);
+    v_TexCoord += uvOffsets.xyxy;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define SPRITESHEET 1
+#define THICKFORMAT 1
+#define TEX0FORMAT 9
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define REFRACT 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+0:48(47): warning: `param_2' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec4 g_RenderVar1;
+
+in vec3 a_Position;
+in vec4 a_TexCoordVec4C1;
+in vec4 a_TexCoordVec4;
+out vec4 v_TexCoord;
+out vec4 v_Color;
+in vec4 a_Color;
+in vec2 a_TexCoordC2;
+
+void ComputeParticleTrailTangents(vec3 localPosition, inout vec3 localVelocity, inout vec3 right, out vec3 up)
+{
+    vec3 eyeDirection = localPosition - (g_ModelMatrixInverse * vec4(g_EyePosition, 1.0)).xyz;
+    right = cross(eyeDirection, localVelocity);
+    right = normalize(right);
+    float trailLength = length(localVelocity);
+    localVelocity /= vec3(trailLength);
+    up = localVelocity * max(min(trailLength * g_RenderVar0.x, g_RenderVar0.y), g_RenderVar0.z);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void main()
+{
+    float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+    vec3 param = a_Position;
+    vec3 param_1 = a_TexCoordVec4C1.xyz;
+    vec3 param_2;
+    vec3 param_3;
+    ComputeParticleTrailTangents(param, param_1, param_2, param_3);
+    vec3 right = param_2;
+    vec3 up = param_3;
+    vec2 param_4 = a_TexCoordVec4.xy;
+    float param_5 = textureRatio;
+    vec4 param_6 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_7 = right;
+    vec3 param_8 = up;
+    vec3 position = ComputeParticlePosition(param_4, param_5, param_6, param_7, param_8);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define THICKFORMAT 1
+#define TRAILRENDERER 1
+#define TEX0FORMAT 8
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define REFRACT 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+0:48(47): warning: `param_2' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec4 g_RenderVar1;
+
+in vec3 a_Position;
+in vec4 a_TexCoordVec4C1;
+in vec4 a_TexCoordVec4;
+out vec4 v_TexCoord;
+out vec4 v_Color;
+in vec4 a_Color;
+in vec2 a_TexCoordC2;
+
+void ComputeParticleTrailTangents(vec3 localPosition, inout vec3 localVelocity, inout vec3 right, out vec3 up)
+{
+    vec3 eyeDirection = localPosition - (g_ModelMatrixInverse * vec4(g_EyePosition, 1.0)).xyz;
+    right = cross(eyeDirection, localVelocity);
+    right = normalize(right);
+    float trailLength = length(localVelocity);
+    localVelocity /= vec3(trailLength);
+    up = localVelocity * max(min(trailLength * g_RenderVar0.x, g_RenderVar0.y), g_RenderVar0.z);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void main()
+{
+    float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+    vec3 param = a_Position;
+    vec3 param_1 = a_TexCoordVec4C1.xyz;
+    vec3 param_2;
+    vec3 param_3;
+    ComputeParticleTrailTangents(param, param_1, param_2, param_3);
+    vec3 right = param_2;
+    vec3 up = param_3;
+    vec2 param_4 = a_TexCoordVec4.xy;
+    float param_5 = textureRatio;
+    vec4 param_6 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_7 = right;
+    vec3 param_8 = up;
+    vec3 position = ComputeParticlePosition(param_4, param_5, param_6, param_7, param_8);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define THICKFORMAT 1
+#define TRAILRENDERER 1
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define REFRACT 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericropeparticle
+Resolving require module: LightingV1 in shader genericropeparticle
+Resolving require module: LightingV1 in shader genericropeparticle
+Resolving require module: LightingV1 in shader genericropeparticle
+Resolving require module: LightingV1 in shader genericropeparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Stop requested by signal 15
+Stopping

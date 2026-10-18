@@ -1,0 +1,41 @@
+{
+  "cases": [
+    {
+      "id": "3789816832",
+      "object": 903,
+      "shader": "shaders/workshop/3577773857/effects/Simple_Audio_Bars.vert",
+      "finding": "Directiva #endif sin #if abierto en línea 70 del shader original",
+      "sha256": "0608e9e36f29234827179234ab8186e389dbff043df8ed80386a1fb14bb274fe",
+      "proposal": "Reparación específica del recurso conocido, con copia original y validación de preprocesador; no eliminar directivas arbitrarias en todos los shaders."
+    },
+    {
+      "id": "3802742966",
+      "object": 717,
+      "shader": "shaders/workshop/2844906964/effects/test_shader",
+      "finding": "Vertex declara varying vec4 v_TexCoord, fragment declara varying vec2 y asigna vec2 fragPos = v_TexCoord",
+      "proposal": "Reconciliar tipos de coordenadas entre etapas conservando componentes usados; comprobar el shader generado por el motor."
+    },
+    {
+      "id": "3088099655",
+      "property": "image",
+      "type": "scenetexture",
+      "default": "",
+      "finding": "Referencia configurable vacía, no demuestra archivo borrado",
+      "proposal": "Resolver propiedad antes de tratar su nombre como ruta; cuando esté vacía conservar textura base o fallback explícito."
+    },
+    {
+      "id": "3789790717",
+      "property": "video",
+      "type": "scenetexture",
+      "default": "",
+      "finding": "Referencia configurable vacía, no demuestra archivo borrado",
+      "proposal": "Mismo análisis de resolución y fallback."
+    }
+  ],
+  "lighting": {
+    "source": "src/WallpaperEngine/Render/Shaders/ShaderUnit.cpp:generateLightingV1",
+    "finding": "Módulo LightingV1 devuelve vec3(0.0); ObjectParser no construye objetos light/shape",
+    "proposal": "Ampliación del motor, con pruebas sintéticas de contribución de luces. Acordar soporte inicial de luces puntuales/direccionales y tratar volumétricas aparte."
+  },
+  "status": "Diagnóstico inicial de solo lectura. A la espera del reparto acordado con Claude para implementar."
+}

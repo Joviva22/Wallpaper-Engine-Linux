@@ -17,6 +17,7 @@ del editor de Windows) la guardan como vector-string de dos componentes
 .get<double>() sobre ese string, nlohmann::json lanza type_error.302 y el proceso
 muere. Wallpaper Engine en Windows sí soporta ambas formas; el port de Linux solo la
 forma escalar. Confirmado con gdb + parcheando una copia aislada del wallpaper."""
+import hashlib
 import json
 import os
 import re
@@ -226,6 +227,59 @@ def _fix_broken_xray_shader(raw_by_name):
     return True
 
 
+_AUDIO_BARS_SHADER = "shaders/workshop/3577773857/effects/Simple_Audio_Bars.vert"
+_AUDIO_BARS_BROKEN_SHA256 = "0608e9e36f29234827179234ab8186e389dbff043df8ed80386a1fb14bb274fe"
+
+
+def _fix_audio_bars_shader(raw_by_name):
+    """Elimina solo el #endif huérfano del recurso diagnosticado y verificado."""
+    raw = raw_by_name.get(_AUDIO_BARS_SHADER)
+    if raw is None or hashlib.sha256(raw).hexdigest() != _AUDIO_BARS_BROKEN_SHA256:
+        return False
+    lines = raw.splitlines(keepends=True)
+    if len(lines) <= 69 or lines[69].strip() != b"#endif":
+        return False
+    raw_by_name[_AUDIO_BARS_SHADER] = b"".join(lines[:69] + lines[70:])
+    return True
+
+
+_KNOWN_FRAGMENT_HASHES = {
+    "shaders/workshop/3577773857/effects/Simple_Audio_Bars.frag": "244821bc402ae08c2cef4a6b5e9e491343bbe0ec02b54e8cc6b69e974f8e374f",
+    "shaders/workshop/3681571511/effects/fxaa.frag": "4aaa800c637f76ffd512963294d723086cd4e6e04dfcc35d038b8de794192608",
+    "shaders/workshop/2844906964/effects/test_shader.frag": "683530058ca911911d5702699d9ad4f0a8cee7b4cb74f4ff953301f8bdbf0114",
+    "shaders/workshop/3577773857/effects/sine_wave.frag": "f7c6acf28a9b8dacb938e9a94295dadb0e2b7faaa648ce49b7b53a9a496da486",
+}
+
+
+def _fix_known_fragment_shaders(raw_by_name):
+    """Adapta únicamente las versiones diagnosticadas, sin alterar otros shaders."""
+    fixed = []
+    for name, digest in _KNOWN_FRAGMENT_HASHES.items():
+        raw = raw_by_name.get(name)
+        if raw is None or hashlib.sha256(raw).hexdigest() != digest:
+            continue
+        if name.endswith(("Simple_Audio_Bars.frag", "sine_wave.frag")):
+            # También las funciones auxiliares transforman coordenadas: usan una
+            # variable global mutable, inicializada al entrar en main.
+            new = re.sub(rb"\bv_TexCoord\b", b"audioCoord", raw)
+            new = new.replace(b"varying vec2 audioCoord;",
+                              b"varying vec2 v_TexCoord;\r\nvec2 audioCoord;")
+            new = new.replace(b"void main() {",
+                              b"void main() {\r\n    audioCoord = v_TexCoord.xy;", 1)
+            if name.endswith("sine_wave.frag"):
+                # La máscara calculada por pow es escalar y ApplyBlending exige float.
+                new = new.replace(b"vec2 waveCoord = audioCoord;", b"float waveCoord = 0.0;")
+        elif name.endswith("fxaa.frag"):
+            # z/w siguen almacenando el tamaño del texel; solo xy es la posición UV.
+            new = re.sub(rb"\bv_TexCoord(\s*[-+])", rb"v_TexCoord.xy\1", raw)
+        else:
+            new = raw.replace(b"vec2 fragPos = v_TexCoord;", b"vec2 fragPos = v_TexCoord.xy;")
+        if new != raw:
+            raw_by_name[name] = new
+            fixed.append(name.rsplit("/", 1)[-1])
+    return fixed
+
+
 def _combo_option_value(option):
     if isinstance(option, dict):
         return option.get("value")
@@ -350,15 +404,21 @@ def _attempt_repair_locked(wid, fix_project=True):
     fixed = _fix_vector_padding(scene)
     injected = _inject_missing_vendor_effects(scene, entries, raw_by_name)
     xray_fixed = _fix_broken_xray_shader(raw_by_name)
+    audio_bars_fixed = _fix_audio_bars_shader(raw_by_name)
+    fragments_fixed = _fix_known_fragment_shaders(raw_by_name)
 
-    if not fixed and not injected and not xray_fixed:
+    if not fixed and not injected and not xray_fixed and not audio_bars_fixed and not fragments_fixed:
         if parts:
             return True, f"Reparado: {'; '.join(parts)} (backup en project.json.bak_original)."
         return False, "No se encontro ninguna incompatibilidad conocida en este wallpaper."
 
-    _backup_once(pkg_path)
+    try:
+        _backup_once(pkg_path)
+    except OSError as e:
+        return bool(parts), f"No se pudo guardar la copia original de scene.pkg: {e}"
 
-    raw_by_name["scene.json"] = json.dumps(scene, indent=4).encode("utf-8")
+    if fixed:
+        raw_by_name["scene.json"] = json.dumps(scene, indent=4).encode("utf-8")
     try:
         _repack(pkg_path, header, entries, raw_by_name)
     except Exception as e:
@@ -368,6 +428,10 @@ def _attempt_repair_locked(wid, fix_project=True):
         parts.append(f"{fixed} campo(s) 'padding' corregidos")
     if injected:
         parts.append(f"efectos anadidos: {', '.join(injected)}")
+    if fragments_fixed:
+        parts.append(f"shaders de fragmento corregidos: {', '.join(fragments_fixed)}")
+    if audio_bars_fixed:
+        parts.append("shader de barras de audio corregido (#endif sobrante)")
     if xray_fixed:
         parts.append("shader xray sustituido por la version que reacciona al raton")
     return True, f"Reparado: {'; '.join(parts)} (backup en *.bak_original)."

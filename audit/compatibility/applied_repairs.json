@@ -1,0 +1,16 @@
+{
+  "3789816832": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag, fxaa.frag, sine_wave.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "before_sha256": "94642e5c5565dcb16a2e70fc73848b4866d4509b7c296cc583733eb800e5d11a",
+    "after_sha256": "a61fcd4fd1f001d4e71d57b40ec5247185c0444c8ed030fe3c895fc00036dca8",
+    "backup": "/home/joviva/.local/share/Steam/steamapps/workshop/content/431960/3789816832/scene.pkg.bak_original",
+    "backup_sha256": "94642e5c5565dcb16a2e70fc73848b4866d4509b7c296cc583733eb800e5d11a"
+  },
+  "3802742966": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "before_sha256": "67b7bcfea3eb37ec2c63920544e77343b4d9cba57913d33b41d17efc0ba3c72d",
+    "after_sha256": "a176af54eb07dc756e06adb2f981bfc2b2ca306a835a6c00ae2f79162773af82",
+    "backup": "/home/joviva/.local/share/Steam/steamapps/workshop/content/431960/3802742966/scene.pkg.bak_original",
+    "backup_sha256": "67b7bcfea3eb37ec2c63920544e77343b4d9cba57913d33b41d17efc0ba3c72d"
+  }
+}

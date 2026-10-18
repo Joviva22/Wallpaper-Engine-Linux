@@ -1,0 +1,12 @@
+{
+  "original": {
+    "returncode": 2,
+    "errors": "ERROR: /tmp/wpe-shader-probe-8mnyjfd9/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+  },
+  "without_orphan_endif": {
+    "returncode": 0,
+    "errors": ""
+  },
+  "scope": "Solo preprocesador; no valida el aspecto visual ni todos los shaders del efecto.",
+  "original_unchanged": true
+}

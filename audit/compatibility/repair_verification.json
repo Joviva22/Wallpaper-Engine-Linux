@@ -1,0 +1,135 @@
+{
+  "3789816832": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3789816832_original.log",
+      "shader_errors": [
+        "GLSL vertex unit parsing Failed: ERROR: 0:157: '#endif' : mismatched statements ",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 903: 0:1(1): error: syntax error, unexpected end of file",
+        "GLSL fragment unit parsing Failed: ERROR: 0:64: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' smooth in 4-component vector of float' and a right operand of type ' temp 2-component vector of float' (or there is no acceptable conversion)",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 429: 0:1(1): error: syntax error, unexpected end of file"
+      ],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "GLSL vertex unit parsing Failed: ERROR: 0:157: '#endif' : mismatched statements ",
+        "ERROR: 0:157: '' : compilation terminated ",
+        "ERROR: 2 compilation errors.  No code generated.",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 903: 0:1(1): error: syntax error, unexpected end of file",
+        "GLSL fragment unit parsing Failed: ERROR: 0:64: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' smooth in 4-component vector of float' and a right operand of type ' temp 2-component vector of float' (or there is no acceptable conversion)",
+        "ERROR: 0:64: '' : compilation terminated ",
+        "ERROR: 2 compilation errors.  No code generated.",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 429: 0:1(1): error: syntax error, unexpected end of file"
+      ]
+    },
+    "repair_message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag, fxaa.frag, sine_wave.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3789816832_repaired.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3802742966": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3802742966_original.log",
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "0:108(2): error: initializer of type vec4 cannot be assigned to variable of type vec2",
+        "Failed to setup object 717: 0:108(2): error: initializer of type vec4 cannot be assigned to variable of type vec2"
+      ]
+    },
+    "repair_message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3802742966_repaired.log",
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3088099655": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3088099655_original.log",
+      "diagnostics": [
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3789790717": {
+    "original": {
+      "returncode": -9,
+      "running_at_timeout": true,
+      "log": "3789790717_original.log",
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "Cannot load libcuda.so.1",
+        "Cannot load libcuda.so.1",
+        "Cannot resolve user texture video for pass filesystem error: Cannot find file: Success [video]",
+        "[ffmpeg/video] h264: Failed setup for format vulkan: hwaccel initialisation returned error.",
+        "[ffmpeg/video] h264: Failed setup for format vulkan: hwaccel initialisation returned error.",
+        "[ffmpeg] CUDA: Cannot load libcuda.so.1",
+        "Cannot load libcuda.so.1"
+      ]
+    },
+    "original_unchanged": true
+  }
+}

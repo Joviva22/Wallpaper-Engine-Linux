@@ -1,0 +1,41 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-tat0mfsd/library/3789816832
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+VolumeLight objects are not supported yet
+VolumeLight objects are not supported yet
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Unknown object type, creating placeholder, empty object: 898
+GLSL vertex unit parsing Failed: ERROR: 0:157: '#endif' : mismatched statements
+ERROR: 0:157: '' : compilation terminated
+ERROR: 2 compilation errors.  No code generated.
+
+
+0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Failed to setup object 903: 0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Resolving require module: LightingV1 in shader genericimage4
+GLSL fragment unit parsing Failed: ERROR: 0:64: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' smooth in 4-component vector of float' and a right operand of type ' temp 2-component vector of float' (or there is no acceptable conversion)
+ERROR: 0:64: '' : compilation terminated
+ERROR: 2 compilation errors.  No code generated.
+
+
+0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Failed to setup object 429: 0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Unknown object type, creating placeholder, empty object: 789
+Stop requested by signal 15
+Stopping
