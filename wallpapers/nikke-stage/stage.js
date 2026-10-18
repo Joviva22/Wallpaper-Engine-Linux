@@ -1,78 +1,379 @@
-// Nikke Stage: shows up to four Nikke characters at once, chosen from the installed packs.
-// Own code; it only uses the Spine web runtimes bundled by the installer (spine = 4.0, spine41 = 4.1)
-// and the free character packs managed by scripts/nikke-stage.py.
+// Nikke Stage: up to four Nikke characters on screen at once, with an in-wallpaper settings panel.
+// Own code. It uses the Spine web runtimes bundled by the installer (spine = 4.0, spine41 = 4.1).
+// Characters come from two places: packs installed on disk (scripts/nikke-stage.py or the app window,
+// listed in __user/stage/characters.json) and packs downloaded from this panel, which are kept in the
+// browser's own IndexedDB (the engine keeps a profile for this wallpaper). Settings live in localStorage.
 (function () {
   'use strict';
 
   var SLOT_COUNT = 4;
   var BASE = '__user/stage/';
-  var manifest = { characters: {} };
-  var slots = [];
-  var latest = null;
+  var RELEASE_URL = 'https://github.com/I6RaVeN9I/nikke-wallpaper-packs/releases/download/v1.0/';
+  var INDEX_URL = 'https://raw.githubusercontent.com/Nikke-db/Nikke-db.github.io/main/js/json/l2d.json';
+  var THUMB_URL = 'https://raw.githubusercontent.com/Nikke-db/Nikke-db.github.io/main/images/sprite/';
+  var CODE_RE = /^c\d{3,4}(_\d{2})?$/;
+  var ALLOWED_EXT = /\.(atlas|png|skel|json)$/i;
+  var MAX_UNPACKED = 120 * 1024 * 1024;
+  var STORE_KEY = 'nikkeStage.v1';
+  var CATALOG_KEY = 'nikkeStage.catalog.v1';
+  var SWATCHES = ['#0c1016', '#1b1f3b', '#2b1b3d', '#3d1b2b', '#12352f', '#3a2f12', '#f2f2f2', '#000000'];
 
-  function cssColor(value) {
-    // Wallpaper Engine colours are "r g b" in the 0..1 range
+  // ------------------------------------------------------------------ state
+  var diskChars = {};        // code -> { name, version }   (installed on disk)
+  var dbChars = {};          // code -> { name, version }   (downloaded in the panel, kept in IndexedDB)
+  var catalog = [];          // [{ id, name }] from Nikke-db
+  var props = {};            // defaults delivered by the engine (Personalizar)
+  var saved = null;          // { values, base } from localStorage
+  var values = {};           // effective settings
+  var slots = [];
+  var level = 0;             // smoothed audio level
+  var reactTimer = null;
+  var saveTimer = null;
+  var awakeTimer = null;
+  var backgroundFile = null;  // image copied by the installer (the system wallpaper by default)
+  var blobUrls = {};         // code -> { rawDataURIs }
+
+  function $(id) { return document.getElementById(id); }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      if (key === 'class') node.className = attrs[key];
+      else if (key === 'text') node.textContent = attrs[key];
+      else if (key.slice(0, 2) === 'on') node.addEventListener(key.slice(2), attrs[key]);
+      else node.setAttribute(key, attrs[key]);
+    });
+    (children || []).forEach(function (child) { if (child) node.appendChild(child); });
+    return node;
+  }
+
+  // ------------------------------------------------------------------ defaults and settings
+  function defaultValues() {
+    var defaults = { bgimage: true, autospread: true, speed: 100, reactevery: 0, bounce: 0, labels: false, bgcolor: '#0c1016' };
+    var xs = { 1: 50, 2: 25, 3: 75, 4: 10 };
+    for (var i = 1; i <= SLOT_COUNT; i++) {
+      defaults['char' + i] = 'none';
+      defaults['x' + i] = xs[i];
+      defaults['scale' + i] = 90;
+      defaults['y' + i] = 0;
+      defaults['flip' + i] = false;
+      defaults['mode' + i] = 'main';
+      defaults['anim' + i] = '';
+      defaults['z' + i] = i;
+    }
+    return defaults;
+  }
+
+  function toHex(value) {
+    // Wallpaper Engine colours are "r g b" in the 0..1 range; the panel uses #rrggbb
+    if (typeof value === 'string' && value.charAt(0) === '#') return value;
     var parts = String(value || '').split(' ').map(Number);
     if (parts.length < 3 || parts.some(isNaN)) return null;
-    return 'rgb(' + parts.slice(0, 3).map(function (c) { return Math.round(c * 255); }).join(',') + ')';
+    return '#' + parts.slice(0, 3).map(function (c) {
+      var hex = Math.max(0, Math.min(255, Math.round(c * 255))).toString(16);
+      return hex.length < 2 ? '0' + hex : hex;
+    }).join('');
+  }
+
+  function flatProps(raw) {
+    var flat = {};
+    Object.keys(raw || {}).forEach(function (key) {
+      var value = raw[key] && raw[key].value;
+      if (value === undefined) return;
+      if (key === 'bgcolor') value = toHex(value);
+      else if (typeof value === 'string' && value === 'true') value = true;
+      else if (typeof value === 'string' && value === 'false') value = false;
+      else if (/^(x|scale|y|z)\d$|^(speed|reactevery|bounce)$/.test(key)) value = Number(value);
+      if (value !== null) flat[key] = value;
+    });
+    return flat;
+  }
+
+  function computeValues() {
+    var flat = flatProps(props);
+    var result = defaultValues();
+    Object.keys(flat).forEach(function (key) { result[key] = flat[key]; });
+    // saved panel settings win unless the same property was changed afterwards in Personalizar
+    if (saved && saved.values) {
+      Object.keys(saved.values).forEach(function (key) {
+        var untouched = !saved.base || JSON.stringify(saved.base[key]) === JSON.stringify(flat[key]);
+        if (untouched) result[key] = saved.values[key];
+      });
+    }
+    return result;
+  }
+
+  function loadSaved() {
+    try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { saved = null; }
+  }
+
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify({ values: values, base: flatProps(props) }));
+        saved = { values: JSON.parse(JSON.stringify(values)), base: flatProps(props) };
+      } catch (e) { console.error('cannot save settings: ' + e); }
+    }, 400);
+  }
+
+  function setValue(key, value) {
+    values[key] = value;
+    scheduleSave();
+    applyAll();
+  }
+
+  // ------------------------------------------------------------------ IndexedDB (downloaded packs)
+  var dbPromise = null;
+  function db() {
+    if (!dbPromise) {
+      dbPromise = new Promise(function (resolve, reject) {
+        var request = indexedDB.open('nikke-stage', 1);
+        request.onupgradeneeded = function () {
+          request.result.createObjectStore('files');
+          request.result.createObjectStore('meta');
+        };
+        request.onsuccess = function () { resolve(request.result); };
+        request.onerror = function () { reject(request.error); };
+      });
+    }
+    return dbPromise;
+  }
+
+  function idb(storeName, mode, action) {
+    return db().then(function (database) {
+      return new Promise(function (resolve, reject) {
+        var tx = database.transaction(storeName, mode);
+        var request = action(tx.objectStore(storeName));
+        tx.oncomplete = function () { resolve(request && request.result); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  function saveDbMeta() { return idb('meta', 'readwrite', function (s) { return s.put(dbChars, 'chars'); }); }
+
+  // ------------------------------------------------------------------ zip reading (Windows zips, deflate)
+  function inflateRaw(bytes) {
+    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(stream).arrayBuffer().then(function (buffer) { return new Uint8Array(buffer); });
+  }
+
+  function readZip(buffer) {
+    var view = new DataView(buffer);
+    var eocd = -1;
+    for (var i = buffer.byteLength - 22; i >= Math.max(0, buffer.byteLength - 66000); i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('no es un zip valido');
+    var count = view.getUint16(eocd + 10, true);
+    var pos = view.getUint32(eocd + 16, true);
+    var decoder = new TextDecoder();
+    var entries = [];
+    for (var n = 0; n < count; n++) {
+      if (view.getUint32(pos, true) !== 0x02014b50) throw new Error('zip danado');
+      var method = view.getUint16(pos + 10, true);
+      var compressed = view.getUint32(pos + 20, true);
+      var size = view.getUint32(pos + 24, true);
+      var nameLen = view.getUint16(pos + 28, true);
+      var extraLen = view.getUint16(pos + 30, true);
+      var commentLen = view.getUint16(pos + 32, true);
+      var local = view.getUint32(pos + 42, true);
+      var name = decoder.decode(new Uint8Array(buffer, pos + 46, nameLen)).replace(/\\/g, '/');
+      entries.push({ name: name, method: method, compressed: compressed, size: size, local: local });
+      pos += 46 + nameLen + extraLen + commentLen;
+    }
+    return entries.filter(function (e) { return e.name.slice(-1) !== '/'; }).map(function (e) {
+      var nameLen = view.getUint16(e.local + 26, true);
+      var extraLen = view.getUint16(e.local + 28, true);
+      var start = e.local + 30 + nameLen + extraLen;
+      return { name: e.name, method: e.method, size: e.size, data: new Uint8Array(buffer, start, e.compressed) };
+    });
+  }
+
+  // the Spine asset manager decodes binaries and atlas text from base64 data URIs (rawDataURIs), so blob: URLs
+  // do not work for them
+  function dataUri(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function skeletonVersion(bytes) {
+    var head = '';
+    for (var i = 0; i < Math.min(bytes.length, 96); i++) head += String.fromCharCode(bytes[i]);
+    var match = head.match(/(\d)\.(\d)\.\d+/);
+    return match && match[1] === '4' && match[2] === '1' ? '4.1' : '4.0';
+  }
+
+  function installPack(code, name, buffer) {
+    var entries = readZip(buffer);
+    var total = 0;
+    var jobs = [];
+    entries.forEach(function (entry) {
+      var parts = entry.name.split('/');
+      if (parts[0] !== code || parts.indexOf('..') !== -1 || !ALLOWED_EXT.test(entry.name)) {
+        throw new Error('el pack contiene un archivo inesperado: ' + entry.name);
+      }
+      total += entry.size;
+      if (total > MAX_UNPACKED) throw new Error('el pack es demasiado grande');
+      // the main model plus the aim/ and cover/ poses
+      var load = entry.method === 0 ? Promise.resolve(new Uint8Array(entry.data)) : inflateRaw(entry.data);
+      jobs.push(load.then(function (bytes) { return { rel: parts.slice(1).join('/'), bytes: bytes }; }));
+    });
+    return Promise.all(jobs).then(function (files) {
+      var skel = files.filter(function (f) { return f.rel === code + '_00.skel'; })[0];
+      if (!skel) throw new Error('el pack no trae ' + code + '_00.skel');
+      return Promise.all(files.map(function (f) {
+        return idb('files', 'readwrite', function (s) { return s.put(new Blob([f.bytes]), code + '/' + f.rel); });
+      })).then(function () {
+        dbChars[code] = { name: name || code, version: skeletonVersion(skel.bytes) };
+        delete blobUrls[code];
+        return saveDbMeta();
+      });
+    });
+  }
+
+  function downloadPack(code, onProgress) {
+    return fetch(RELEASE_URL + code + '.zip').then(function (response) {
+      if (!response.ok) throw new Error('no existe el pack ' + code + ' (' + response.status + ')');
+      var total = Number(response.headers.get('content-length')) || 0;
+      var reader = response.body.getReader();
+      var chunks = [];
+      var received = 0;
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) return;
+          chunks.push(result.value);
+          received += result.value.length;
+          if (received > 60 * 1024 * 1024) throw new Error('el pack es demasiado grande');
+          if (onProgress && total) onProgress(received / total);
+          return pump();
+        });
+      }
+      return pump().then(function () { return new Blob(chunks).arrayBuffer(); });
+    });
+  }
+
+  function removePack(code) {
+    return idb('files', 'readwrite', function (s) {
+      return s.delete(IDBKeyRange.bound(code + '/', code + '/￿'));
+    }).then(function () {
+      delete dbChars[code];
+      delete blobUrls[code];
+      return saveDbMeta();
+    });
+  }
+
+  function rawUrlsFor(code) {
+    if (blobUrls[code]) return Promise.resolve(blobUrls[code]);
+    var range = IDBKeyRange.bound(code + '/', code + '/\uffff');
+    return Promise.all([idb('files', 'readonly', function (s) { return s.getAllKeys(range); }),
+                        idb('files', 'readonly', function (s) { return s.getAll(range); })])
+      .then(function (result) {
+        var keys = result[0], blobs = result[1];
+        return Promise.all(blobs.map(dataUri)).then(function (uris) {
+          var raw = {};
+          keys.forEach(function (key, index) { raw['db/' + key] = uris[index]; });
+          blobUrls[code] = raw;
+          return raw;
+        });
+      });
+  }
+
+  // ------------------------------------------------------------------ characters
+  function allChars() {
+    var merged = {};
+    Object.keys(dbChars).forEach(function (code) { merged[code] = dbChars[code]; });
+    Object.keys(diskChars).forEach(function (code) { merged[code] = diskChars[code]; });
+    return merged;
+  }
+
+  function installedCodes() {
+    return Object.keys(allChars()).sort();
+  }
+
+  function charName(code) {
+    var entry = allChars()[code];
+    if (entry && entry.name && entry.name !== code) return entry.name;
+    var item = catalog.filter(function (c) { return c.id === code; })[0];
+    return item ? item.name : code;
+  }
+
+  function thumbUrl(code) {
+    var match = code.match(/^(c\d+)(?:_(\d\d))?$/);
+    return match ? THUMB_URL + 'si_' + match[1] + (match[2] ? '_' + match[2] : '') + '_00_s.png' : '';
+  }
+
+  var MODES = [['main', 'Normal'], ['aim', 'Apuntando'], ['cover', 'Cobertura']];
+  var MODE_DEFAULT_ANIM = { main: 'idle', aim: 'aim', cover: 'cover_idle' };
+  var REACTION_RE = /(action|shy|angry|talk|special|hit|reload|stun|fire)/i;
+
+  function modeFile(code, mode) {
+    if (mode === 'aim') return 'aim/' + code + '_aim_00';
+    if (mode === 'cover') return 'cover/' + code + '_cover_00';
+    return code + '_00';
   }
 
   function runtimeFor(code) {
-    var entry = manifest.characters[code];
+    var entry = allChars()[code];
     return entry && entry.version === '4.1' ? window.spine41 : window.spine;
   }
 
-  function prop(props, name, fallback) {
-    return props && props[name] && props[name].value !== undefined ? props[name].value : fallback;
-  }
-
+  // ------------------------------------------------------------------ stage (spine players)
   function createSlot(index) {
-    var element = document.createElement('div');
-    element.className = 'slot';
+    var element = el('div', { class: 'slot', id: 'slot' + (index + 1) });
     element.style.transition = 'opacity 0.6s ease';
     element.style.opacity = '0';
-    element.id = 'slot' + (index + 1);
-    document.getElementById('stage').appendChild(element);
-    return { index: index, element: element, code: null, loaded: null, player: null, token: 0 };
+    $('stage').appendChild(element);
+    var slot = { index: index, element: element, code: null, loaded: null, player: null, token: 0, flip: false,
+                 reactions: null, baseAnim: null, animations: [], loadedMode: 'main' };
+    element.addEventListener('click', function () { if (!document.body.classList.contains('editing')) playReaction(slot); });
+    element.addEventListener('mousedown', function (event) { startDrag(slot, event); });
+    element.addEventListener('wheel', function (event) { wheelScale(slot, event); });
+    return slot;
   }
 
   function destroyPlayer(slot) {
     slot.token++;
-    if (slot.player) {
-      try { slot.player.dispose(); } catch (e) { /* ignore */ }
-      slot.player = null;
-    }
+    if (slot.player) { try { slot.player.dispose(); } catch (e) { /* ignore */ } slot.player = null; }
     slot.element.innerHTML = '';
     slot.element.style.opacity = '0';
     slot.reactions = null;
   }
 
-  function loadCharacter(slot, code) {
-    destroyPlayer(slot);
-    slot.code = code;
-    slot.loaded = code;
-    if (!code || code === 'none' || !manifest.characters[code]) return;
+  function playReaction(slot) {
+    if (!slot.player || !slot.reactions || !slot.reactions.length) return;
+    playAnimation(slot, slot.reactions[Math.floor(Math.random() * slot.reactions.length)], false);
+  }
 
-    var runtime = runtimeFor(code);
-    if (!runtime || !runtime.SpinePlayer) {
-      console.error('Spine runtime missing for ' + code);
-      return;
+  function scheduleReactions(seconds) {
+    if (reactTimer) { clearInterval(reactTimer); reactTimer = null; }
+    if (seconds > 0) {
+      reactTimer = setInterval(function () {
+        var ready = slots.filter(function (s) { return s.player && s.reactions && s.reactions.length; });
+        if (ready.length) playReaction(ready[Math.floor(Math.random() * ready.length)]);
+      }, seconds * 1000);
     }
+  }
 
-    var token = slot.token;
-    var folder = BASE + 'characters/' + code + '/';
-
-    // The player frames the camera on the animation it starts with; without naming one it uses the
-    // first (often a tiny face animation) and the character is cropped. 'idle' shows the whole body.
+  // Creates a SpinePlayer in `container` for one character and calls onReady(player, idleName).
+  // `raw` maps urls to in-memory blobs for packs that are not on disk.
+  function spawnPlayer(container, code, mode, wantedAnimation, version, folder, raw, isCurrent, onReady, onFail) {
+    var runtime = version === '4.1' ? window.spine41 : window.spine;
+    if (!runtime || !runtime.SpinePlayer) { console.error('Spine runtime missing for ' + code); return; }
     function create(animation) {
       var config = {
-        skelUrl: folder + code + '_00.skel',
-        atlasUrl: folder + code + '_00.atlas',
+        skelUrl: folder + modeFile(code, mode) + '.skel',
+        atlasUrl: folder + modeFile(code, mode) + '.atlas',
         showControls: false,
         alpha: true,
         backgroundColor: '#00000000',
-        // In the modified spine-player.js the camera zoom is a plain field (default 2, which crops the
-        // character): zoom = framed height / canvas height fits the whole viewport on the canvas.
+        // the modified spine-player.js bundled by the Nikke wallpapers has a plain zoom field (default 2, which
+        // crops the character): framed height / canvas height fits the whole viewport on the canvas
         update: function (player) {
           if (!('nrb_zoom' in player) || !player.currentViewport || !player.canvas) return;
           var vp = player.currentViewport;
@@ -81,148 +382,736 @@
           player.nrb_zoom = Math.max(height / player.canvas.height, width / player.canvas.width) || 1;
         },
         success: function (player) {
-          if (token !== slot.token) { try { player.dispose(); } catch (e) { /* ignore */ } return; }
-          slot.player = player;
-          player.speed = speedFactor;
-          slot.element.style.opacity = '1';
-          slot.reactions = names_of(player).filter(isReaction);
-          // the spine-player.js bundled by the Nikke wallpapers is a modified build that zooms x2 by default
+          if (!isCurrent()) { try { player.dispose(); } catch (e) { /* ignore */ } return; }
           if ('nrb_zoom' in player) { player.anrb_posxa = 0; player.nrb_posy = 0; }
-          var reactions = slot.reactions;
-          slot.idleName = animation;
-          // clicking the character plays a reaction and goes back to idle
-          slot.element.onclick = function () { playReaction(slot); };
+          onReady(player, animation);
         },
         error: function (player, message) {
-          if (animation && token === slot.token) {
+          // the failed player keeps its render loop alive (and throwing) unless it is disposed
+          try { if (player) player.dispose(); } catch (e) { /* ignore */ }
+          if (animation && isCurrent()) {
             console.error('Cannot load ' + code + ' with ' + animation + ': ' + message + ' (retrying)');
-            destroyPlayer(slot);
-            slot.token = token + 1;
-            token = slot.token;
+            container.innerHTML = '';
             create(null);
           } else {
             console.error('Cannot load ' + code + ': ' + message);
+            if (onFail && isCurrent()) onFail(message);
           }
         }
       };
       if (animation) config.animation = animation;
-      new runtime.SpinePlayer(slot.element, config);
+      if (raw) config.rawDataURIs = raw;
+      new runtime.SpinePlayer(container, config);
     }
-
-    create('idle');
+    create(wantedAnimation || MODE_DEFAULT_ANIM[mode] || 'idle');
   }
 
-  function names_of(player) {
-    return player.skeleton.data.animations.map(function (a) { return a.name; });
+  function loadCharacter(slot, code) {
+    var i = slot.index + 1;
+    var mode = values['mode' + i] || 'main';
+    destroyPlayer(slot);
+    slot.loaded = code;
+    slot.loadedMode = mode;
+    slot.animations = [];
+    if (!code || code === 'none' || !allChars()[code]) return;
+    var token = slot.token;
+    var fromDisk = !!diskChars[code];
+
+    (fromDisk ? Promise.resolve(null) : rawUrlsFor(code)).then(function (raw) {
+      if (token !== slot.token) return;
+      var folder = fromDisk ? BASE + 'characters/' + code + '/' : 'db/' + code + '/';
+      spawnPlayer(slot.element, code, mode, values['anim' + i] || '', allChars()[code].version, folder, raw,
+        function () { return token === slot.token; },
+        function (player, animation) {
+          slot.player = player;
+          player.speed = values.speed / 100;
+          var names = player.skeleton.data.animations.map(function (a) { return a.name; });
+          slot.animations = names;
+          slot.baseAnim = animation && names.indexOf(animation) !== -1 ? animation : names[0];
+          slot.reactions = names.filter(function (n) { return REACTION_RE.test(n) && n !== slot.baseAnim; });
+          slot.element.style.opacity = '1';
+          refreshPanel();
+        },
+        function () {
+          // this pack has no such pose: go back to the normal one
+          if (mode !== 'main' && token === slot.token) {
+            toast(charName(code) + ' no tiene la pose "' + mode + '"');
+            values['mode' + i] = 'main';
+            scheduleSave();
+            slot.loaded = null;
+            applyAll();
+          }
+        });
+    }).catch(function (e) { console.error('load ' + code + ': ' + e); });
   }
 
-  function isReaction(name) {
-    return /^(action|shy|angry|talk|special)/.test(name);
+  function playAnimation(slot, name, loop) {
+    if (!slot.player || !slot.animations || slot.animations.indexOf(name) === -1) return false;
+    slot.player.setAnimation(name, !!loop);
+    if (!loop && slot.baseAnim) slot.player.addAnimation(slot.baseAnim, true, 0);
+    return true;
   }
-
-  function playReaction(slot) {
-    if (!slot.player || !slot.reactions || !slot.reactions.length || !slot.idleName) return;
-    var reaction = slot.reactions[Math.floor(Math.random() * slot.reactions.length)];
-    slot.player.setAnimation(reaction, false);
-    slot.player.addAnimation(slot.idleName, true, 0);
-  }
-
-  var speedFactor = 1;     // animation speed multiplier
-  var reactTimer = null;   // periodic automatic reactions
-
-  function scheduleReactions(seconds) {
-    if (reactTimer) { clearInterval(reactTimer); reactTimer = null; }
-    if (seconds > 0) {
-      reactTimer = setInterval(function () {
-        var visible = slots.filter(function (slot) { return slot.player && slot.reactions && slot.reactions.length; });
-        if (visible.length) playReaction(visible[Math.floor(Math.random() * visible.length)]);
-      }, seconds * 1000);
-    }
-  }
-
-  var autoSpread = true;  // evenly spread the visible characters
-  var bounce = 0;     // how much the characters pulse with the music (0..1)
-  var level = 0;      // smoothed audio level (0..1)
 
   function applyTransform(slot) {
-    var pulse = 1 + bounce * level;
+    var pulse = 1 + (values.bounce / 100) * level;
     slot.element.style.transformOrigin = '50% 100%';
     slot.element.style.transform = 'scaleX(' + (slot.flip ? -1 : 1) + ') scale(' + pulse + ')';
   }
 
-  function layout(slot, props) {
+  function layout(slot) {
     var i = slot.index + 1;
-    var scale = Number(prop(props, 'scale' + i, 90)) / 100;
-    var x = Number(prop(props, 'x' + i, 50));
-    if (autoSpread) {
-      // spread the visible characters evenly across the screen
+    var height = window.innerHeight * values['scale' + i] / 100;
+    var width = height * 0.75;
+    var x = values['x' + i];
+    if (values.autospread) {
       var visible = slots.filter(function (other) { return other.code && other.code !== 'none'; });
       var position = visible.indexOf(slot);
       if (position !== -1) x = (position + 1) * 100 / (visible.length + 1);
     }
-    var height = window.innerHeight * scale;
-    var width = height * 0.75;
     slot.element.style.height = height + 'px';
     slot.element.style.width = width + 'px';
     slot.element.style.left = (window.innerWidth * x / 100 - width / 2) + 'px';
-    // vertical offset as a percentage of the screen height (positive moves the character up)
-    slot.element.style.bottom = (window.innerHeight * Number(prop(props, 'y' + i, 0)) / 100) + 'px';
-    slot.flip = prop(props, 'flip' + i, false) === true || prop(props, 'flip' + i, false) === 'true';
+    slot.element.style.bottom = (window.innerHeight * values['y' + i] / 100) + 'px';
+    slot.flip = values['flip' + i] === true;
+    slot.element.style.zIndex = String(values['z' + i]);
     slot.element.style.display = slot.code && slot.code !== 'none' ? 'block' : 'none';
+    var tag = slot.element.querySelector('.name-tag');
+    if (values.labels && slot.code && slot.code !== 'none') {
+      if (!tag) { tag = el('div', { class: 'name-tag' }); slot.element.appendChild(tag); }
+      tag.textContent = charName(slot.code);
+    } else if (tag) {
+      tag.remove();
+    }
     applyTransform(slot);
   }
 
-  function apply(props) {
-    latest = props;
-    bounce = Number(prop(props, 'bounce', 0)) / 100;
-    autoSpread = prop(props, 'autospread', true) !== false && prop(props, 'autospread', true) !== 'false';
-    speedFactor = (Number(prop(props, 'speed', 100)) || 100) / 100;
-    slots.forEach(function (slot) { if (slot.player) slot.player.speed = speedFactor; });
-    scheduleReactions(Number(prop(props, 'reactevery', 0)));
-    var color = cssColor(prop(props, 'bgcolor', null));
-    if (color) document.body.style.background = color;
-    slots.forEach(function (slot) { slot.code = prop(props, 'char' + (slot.index + 1), 'none'); });
+  function applyAll() {
+    document.body.style.backgroundColor = values.bgcolor;
+    if (backgroundFile && values.bgimage !== false) {
+      document.body.style.backgroundImage = 'url("' + BASE + backgroundFile + '")';
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundRepeat = 'no-repeat';
+    } else {
+      document.body.style.backgroundImage = 'none';
+    }
+    scheduleReactions(Number(values.reactevery));
+    slots.forEach(function (slot) { slot.code = values['char' + (slot.index + 1)]; });
     slots.forEach(function (slot) {
-      // size the container first: the player measures it when it starts
-      layout(slot, props);
-      if (slot.code !== slot.loaded) loadCharacter(slot, slot.code);
+      layout(slot);
+      if (slot.code !== slot.loaded || (values['mode' + (slot.index + 1)] || 'main') !== slot.loadedMode) loadCharacter(slot, slot.code);
+      if (slot.player) slot.player.speed = values.speed / 100;
+    });
+    refreshPanel();
+  }
+
+  // ------------------------------------------------------------------ editing on the stage (drag + wheel)
+  var drag = null;
+  function startDrag(slot, event) {
+    if (!document.body.classList.contains('editing') || event.button > 0) return;
+    drag = { slot: slot, startX: event.clientX, startY: event.clientY,
+             x: values['x' + (slot.index + 1)], y: values['y' + (slot.index + 1)] };
+    slot.element.classList.add('dragging');
+    event.preventDefault();
+  }
+  window.addEventListener('mousemove', function (event) {
+    wake();
+    if (!drag) return;
+    var i = drag.slot.index + 1;
+    values.autospread = false;
+    values['x' + i] = Math.max(0, Math.min(100, drag.x + (event.clientX - drag.startX) * 100 / window.innerWidth));
+    values['y' + i] = Math.max(-30, Math.min(60, drag.y - (event.clientY - drag.startY) * 100 / window.innerHeight));
+    layout(drag.slot);
+  });
+  window.addEventListener('mouseup', function () {
+    if (!drag) return;
+    drag.slot.element.classList.remove('dragging');
+    drag = null;
+    scheduleSave();
+    refreshPanel();
+  });
+  function wheelScale(slot, event) {
+    if (!document.body.classList.contains('editing')) return;
+    var key = 'scale' + (slot.index + 1);
+    values[key] = Math.max(20, Math.min(150, values[key] + (event.deltaY < 0 ? 4 : -4)));
+    layout(slot);
+    scheduleSave();
+    refreshPanel();
+    event.preventDefault();
+  }
+
+  // ------------------------------------------------------------------ panel UI
+  var pageNodes = {};
+  var slotCards = [];
+  var pickerTarget = 0;
+
+  function toast(message, ms) {
+    var node = $('toast');
+    node.textContent = message;
+    node.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { node.classList.remove('show'); }, ms || 2600);
+  }
+
+  function wake() {
+    document.body.classList.add('ui-awake');
+    clearTimeout(awakeTimer);
+    awakeTimer = setTimeout(function () { document.body.classList.remove('ui-awake'); }, 4000);
+  }
+
+  function slider(key, label, min, max, step, suffix) {
+    var output = el('output');
+    var input = el('input', { type: 'range', min: min, max: max, step: step });
+    input.addEventListener('input', function () { setValue(key, Number(input.value)); });
+    var row = el('div', { class: 'row' }, [el('label', { text: label }), input, output]);
+    row.sync = function () { input.value = values[key]; output.textContent = Math.round(values[key]) + (suffix || ''); };
+    return row;
+  }
+
+  function toggle(key, label) {
+    var input = el('input', { type: 'checkbox' });
+    input.addEventListener('change', function () { setValue(key, input.checked); });
+    var row = el('div', { class: 'row' }, [el('label', { text: label }),
+      el('label', { class: 'switch' }, [input, el('span')])]);
+    row.sync = function () { input.checked = values[key] === true; };
+    return row;
+  }
+
+  function buildSlotCard(index) {
+    var i = index + 1;
+    var avatar = el('div', { class: 'avatar', title: 'Cambiar personaje',
+      onclick: function () { openPicker(index); } });
+    var name = el('b');
+    var detail = el('small');
+    var clear = el('button', { class: 'btn', text: 'Quitar', onclick: function () { setValue('char' + i, 'none'); } });
+    var head = el('div', { class: 'slot-head' }, [avatar, el('div', { class: 'slot-title' }, [name, detail]), clear]);
+    var modeBar = el('div', { class: 'seg' }, MODES.map(function (m) {
+      return el('button', { class: 'seg-btn', 'data-mode': m[0], text: m[1],
+        onclick: function () { setValue('mode' + i, m[0]); setValue('anim' + i, ''); } });
+    }));
+    var animSelect = el('select', { class: 'select' });
+    animSelect.addEventListener('change', function () { setValue('anim' + i, animSelect.value); });
+    var slotObj = function () { return slots[index]; };
+    var actions = el('div', { class: 'actions' }, [
+      el('button', { class: 'btn', text: 'Reacción', onclick: function () { playReaction(slotObj()); } }),
+      el('button', { class: 'btn', text: 'Recargar', 'data-act': 'reload', onclick: function () {
+        var names = slotObj().animations.filter(function (n) { return /reload/i.test(n); });
+        if (names.length) playAnimation(slotObj(), names[Math.floor(Math.random() * names.length)], false);
+        else toast('Esta pose no tiene animación de recarga'); } }),
+      el('button', { class: 'btn', text: 'Disparar', 'data-act': 'fire', onclick: function () {
+        var names = slotObj().animations.filter(function (n) { return /fire|shot|attack/i.test(n); });
+        if (names.length) playAnimation(slotObj(), names[0], false);
+        else toast('Esta pose no tiene animación de disparo'); } }),
+      el('button', { class: 'btn', text: '⬆ Delante', title: 'Traer al frente', onclick: function () {
+        var top = -1e9; for (var n = 1; n <= SLOT_COUNT; n++) top = Math.max(top, values['z' + n]); setValue('z' + i, top + 1); } }),
+      el('button', { class: 'btn', text: '⬇ Detrás', title: 'Enviar al fondo', onclick: function () {
+        var low = 1e9; for (var n = 1; n <= SLOT_COUNT; n++) low = Math.min(low, values['z' + n]); setValue('z' + i, low - 1); } })]);
+    var rows = [el('div', { class: 'row' }, [el('label', { text: 'Pose' }), modeBar]),
+                el('div', { class: 'row' }, [el('label', { text: 'Animación' }), animSelect]),
+                actions,
+                slider('x' + i, 'Posición', 0, 100, 1, '%'), slider('scale' + i, 'Tamaño', 20, 150, 1, '%'),
+                slider('y' + i, 'Altura', -30, 60, 1, '%'), toggle('flip' + i, 'Espejo')];
+    rows[0].sync = function () {
+      Array.prototype.forEach.call(modeBar.children, function (b) { b.classList.toggle('active', b.getAttribute('data-mode') === (values['mode' + i] || 'main')); });
+    };
+    rows[1].sync = function () {
+      var current = values['anim' + i] || '';
+      var names = slotObj() ? slotObj().animations : [];
+      animSelect.innerHTML = '';
+      animSelect.appendChild(el('option', { value: '', text: '(automática)' }));
+      names.forEach(function (n) { animSelect.appendChild(el('option', { value: n, text: n })); });
+      animSelect.value = current;
+    };
+    actions.sync = function () {
+      var names = slotObj() ? slotObj().animations : [];
+      actions.querySelector('[data-act=reload]').style.opacity = names.some(function (n) { return /reload/i.test(n); }) ? '1' : '0.45';
+      actions.querySelector('[data-act=fire]').style.opacity = names.some(function (n) { return /fire|shot|attack/i.test(n); }) ? '1' : '0.45';
+    };
+    var title = el('h2', { class: 'fold', text: 'Hueco ' + i, onclick: function () { card.classList.toggle('open'); } });
+    var card = el('div', { class: 'card slot-card' + (index === 0 ? ' open' : '') }, [title, head].concat(rows));
+    card.sync = function () {
+      var code = values['char' + i];
+      var empty = !code || code === 'none';
+      avatar.className = 'avatar' + (empty ? ' empty' : '');
+      avatar.style.backgroundImage = empty ? 'none' : 'url("' + thumbUrl(code) + '")';
+      avatar.textContent = empty ? '+' : '';
+      name.textContent = empty ? 'Vacío' : charName(code);
+      detail.textContent = empty ? 'Pulsa para elegir un personaje' : code;
+      clear.style.display = empty ? 'none' : '';
+      rows.forEach(function (row) { row.sync(); });
+    };
+    return card;
+  }
+
+  function buildScenePage() {
+    var color = el('input', { type: 'color' });
+    color.addEventListener('input', function () { setValue('bgcolor', color.value); });
+    var swatches = el('div', { class: 'swatches' }, SWATCHES.map(function (hex) {
+      var swatch = el('div', { class: 'swatch', title: hex, onclick: function () { setValue('bgcolor', hex); } });
+      swatch.style.background = hex;
+      return swatch;
+    }));
+    var rows = [toggle('bgimage', 'Imagen de fondo'), toggle('autospread', 'Repartir solos'), toggle('labels', 'Mostrar nombres'),
+                slider('speed', 'Velocidad', 25, 300, 5, '%'), slider('reactevery', 'Reacción cada', 0, 120, 5, ' s'),
+                slider('bounce', 'Latido (música)', 0, 30, 1, '%')];
+    var reset = el('button', { class: 'btn danger', text: 'Restablecer ajustes', onclick: function () {
+      var keep = {};
+      for (var i = 1; i <= SLOT_COUNT; i++) keep['char' + i] = values['char' + i];
+      values = defaultValues();
+      Object.keys(keep).forEach(function (key) { values[key] = keep[key]; });
+      scheduleSave(); applyAll(); toast('Ajustes restablecidos');
+    } });
+    var page = el('div', { class: 'page' }, [
+      el('div', { class: 'card' }, [el('h2', { text: 'Animación' })].concat(rows)),
+      el('div', { class: 'card' }, [el('h2', { text: 'Fondo' }),
+        el('div', { class: 'row' }, [el('label', { text: 'Color' }), color]), swatches,
+        el('p', { class: 'hint', text: 'La imagen es la del sistema por defecto; se cambia desde Elegir Fondo (Nikke Stage: personajes) o con scripts/nikke-stage.py background.' })]),
+      el('div', { class: 'card' }, [el('h2', { text: 'Edición en pantalla' }),
+        el('p', { class: 'hint', text: 'Con el panel abierto puedes arrastrar los personajes por la pantalla para moverlos (el tamaño se cambia con el deslizador de cada hueco).' }),
+        reset])]);
+    page.sync = function () { rows.forEach(function (row) { row.sync(); }); color.value = values.bgcolor; };
+    return page;
+  }
+
+  function buildCharactersPage() {
+    slotCards = [];
+    for (var i = 0; i < SLOT_COUNT; i++) slotCards.push(buildSlotCard(i));
+    var page = el('div', { class: 'page' }, [el('p', { class: 'hint',
+      text: 'Elige hasta cuatro personajes. Pulsa la foto de cada hueco para cambiarlo o ve a "Catálogo" para descargar más.' })]
+      .concat(slotCards));
+    page.sync = function () { slotCards.forEach(function (card) { card.sync(); }); };
+    return page;
+  }
+
+  // ---- catalogue
+  var catalogGrid = null;
+  var catalogSearch = null;
+  var catalogCount = null;
+  var catalogBusy = {};
+
+  function makeTile(code, name, options) {
+    var tile = el('div', { class: 'tile' + (options.selected ? ' selected' : ''), title: name + ' (' + code + ')',
+      onclick: options.onclick });
+    tile.style.backgroundImage = 'url("' + thumbUrl(code) + '")';
+    tile.appendChild(el('div', { class: 'label', text: name }));
+    if (options.badge) tile.appendChild(el('div', { class: 'badge' + (options.badgeClass ? ' ' + options.badgeClass : ''), text: options.badge }));
+    return tile;
+  }
+
+  var CATALOG_PAGE = 12;
+  var catalogPage = 0;
+  var catalogLetter = '';      // '' = all; '#' = names not starting with a letter
+  var catalogFilter = 'all';   // all | installed | missing
+  var catalogNav = null;
+  var catalogLetters = null;
+  var catalogFilters = null;
+
+  function firstLetter(name) {
+    var letter = String(name || '').trim().charAt(0).toUpperCase();
+    return /[A-Z]/.test(letter) ? letter : '#';
+  }
+
+  function catalogItems() {
+    var installed = allChars();
+    var query = catalogSearch ? catalogSearch.value.trim().toLowerCase() : '';
+    var items = catalog.length ? catalog : installedCodes().map(function (c) { return { id: c, name: charName(c) }; });
+    return items.filter(function (item) {
+      if (catalogLetter && firstLetter(item.name) !== catalogLetter) return false;
+      if (catalogFilter === 'installed' && !installed[item.id]) return false;
+      if (catalogFilter === 'missing' && installed[item.id]) return false;
+      return !query || item.id.toLowerCase().indexOf(query) !== -1 || String(item.name).toLowerCase().indexOf(query) !== -1;
     });
   }
 
-  function showHint() {
-    var hasCharacters = Object.keys(manifest.characters || {}).length > 0;
-    if (hasCharacters) return;
-    var hint = document.createElement('div');
-    hint.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
-      + 'color:#9fb3c8;font:20px sans-serif;text-align:center;padding:40px';
-    hint.textContent = 'Nikke Stage: no hay personajes instalados. Ejecuta scripts/nikke-stage.py add c010 (por ejemplo).';
-    document.body.appendChild(hint);
+  function refreshCatalog() {
+    if (!catalogGrid) return;
+    var installed = allChars();
+    var items = catalogItems();
+    var pages = Math.max(1, Math.ceil(items.length / CATALOG_PAGE));
+    catalogPage = Math.min(catalogPage, pages - 1);
+    catalogGrid.innerHTML = '';
+    catalogCount.textContent = items.length + ' personajes' + (catalog.length ? '' : ' (catálogo sin conexión)')
+      + ' · ' + installedCodes().length + ' guardados';
+    items.slice(catalogPage * CATALOG_PAGE, (catalogPage + 1) * CATALOG_PAGE).forEach(function (item) {
+      var have = !!installed[item.id];
+      var tile = makeTile(item.id, item.name, {
+        badge: catalogBusy[item.id] ? Math.round(catalogBusy[item.id] * 100) + '%' : (have ? 'Guardado' : 'Ver'),
+        badgeClass: have ? '' : 'get',
+        onclick: function () { openPreview(item.id, item.name); }
+      });
+      if (catalogBusy[item.id]) tile.classList.add('busy');
+      catalogGrid.appendChild(tile);
+    });
+    catalogNav.innerHTML = '';
+    catalogNav.appendChild(el('button', { class: 'btn', text: '◀', disabled: catalogPage === 0 ? 'disabled' : null,
+      onclick: function () { catalogPage = Math.max(0, catalogPage - 1); refreshCatalog(); } }));
+    catalogNav.appendChild(el('span', { class: 'page-info', text: 'Página ' + (catalogPage + 1) + ' de ' + pages }));
+    catalogNav.appendChild(el('button', { class: 'btn', text: '▶', disabled: catalogPage >= pages - 1 ? 'disabled' : null,
+      onclick: function () { catalogPage = Math.min(pages - 1, catalogPage + 1); refreshCatalog(); } }));
+    Array.prototype.forEach.call(catalogLetters.children, function (chip) {
+      chip.classList.toggle('active', chip.getAttribute('data-letter') === catalogLetter);
+    });
+    Array.prototype.forEach.call(catalogFilters.children, function (chip) {
+      chip.classList.toggle('active', chip.getAttribute('data-filter') === catalogFilter);
+    });
+  }
+
+  function download(code, name) {
+    if (catalogBusy[code] !== undefined) return;
+    catalogBusy[code] = 0.01;
+    refreshCatalog();
+    toast('Descargando ' + name + '...');
+    downloadPack(code, function (fraction) { catalogBusy[code] = Math.max(0.01, fraction * 0.9); refreshCatalog(); })
+      .then(function (buffer) { return installPack(code, name, buffer); })
+      .then(function () {
+        delete catalogBusy[code];
+        toast(name + ' instalado');
+        refreshCatalog();
+        refreshPanel();
+      })
+      .catch(function (error) {
+        delete catalogBusy[code];
+        refreshCatalog();
+        toast('No se pudo instalar ' + name + ': ' + (error.message || error), 5000);
+      });
+  }
+
+  function offerRemove(code) {
+    if (diskChars[code]) { toast(charName(code) + ' está instalado en disco (se quita desde la aplicación)'); return; }
+    var inUse = slots.some(function (slot) { return slot.code === code; });
+    if (inUse) { toast(charName(code) + ' se está usando en un hueco'); return; }
+    if (!window.confirm || true) {
+      // the page has no native dialogs in a wallpaper: a second click within 3 s confirms
+      if (offerRemove.pending === code) {
+        offerRemove.pending = null;
+        removePack(code).then(function () { toast(charName(code) + ' eliminado'); refreshCatalog(); refreshPanel(); });
+      } else {
+        offerRemove.pending = code;
+        toast('Pulsa otra vez para eliminar a ' + charName(code), 3000);
+        setTimeout(function () { if (offerRemove.pending === code) offerRemove.pending = null; }, 3000);
+      }
+    }
+  }
+
+  function loadCatalog() {
+    try {
+      var cached = JSON.parse(localStorage.getItem(CATALOG_KEY) || 'null');
+      if (cached && cached.items) { catalog = cached.items; refreshCatalog(); }
+      if (cached && Date.now() - cached.t < 7 * 24 * 3600 * 1000) return;
+    } catch (e) { /* ignore */ }
+    fetch(INDEX_URL).then(function (r) { return r.json(); }).then(function (data) {
+      catalog = data.filter(function (item) { return CODE_RE.test(item.id); })
+        .map(function (item) { return { id: item.id, name: item.name }; });
+      try { localStorage.setItem(CATALOG_KEY, JSON.stringify({ t: Date.now(), items: catalog })); } catch (e) { /* ignore */ }
+      refreshCatalog();
+    }).catch(function (e) { console.error('catalog: ' + e); });
+  }
+
+  function buildCatalogPage() {
+    catalogSearch = el('input', { type: 'search', placeholder: 'Buscar (si tu teclado llega al wallpaper)' });
+    catalogSearch.addEventListener('input', function () { catalogPage = 0; refreshCatalog(); });
+    catalogCount = el('div', { class: 'count' });
+    catalogGrid = el('div', { class: 'grid' });
+    catalogNav = el('div', { class: 'pager' });
+    // the engine forwards the mouse but not the keyboard or the wheel, so filtering and paging are done
+    // with buttons: letter chips and a state filter replace typing, arrows replace scrolling
+    catalogLetters = el('div', { class: 'chips' }, [''].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('')).map(function (letter) {
+      return el('button', { class: 'chip', 'data-letter': letter, text: letter || 'Todos',
+        onclick: function () { catalogLetter = letter; catalogPage = 0; refreshCatalog(); } });
+    }));
+    catalogFilters = el('div', { class: 'chips' }, [['all', 'Todos'], ['installed', 'Guardados'], ['missing', 'Sin descargar']].map(function (f) {
+      return el('button', { class: 'chip', 'data-filter': f[0], text: f[1],
+        onclick: function () { catalogFilter = f[0]; catalogPage = 0; refreshCatalog(); } });
+    }));
+    var page = el('div', { class: 'page' }, [
+      el('p', { class: 'hint', text: 'Pulsa cualquier personaje para verlo en pantalla, esté guardado o no (se baja un momento, 3-17 MB). Desde ahí puedes guardarlo o ponerlo en un hueco.' }),
+      catalogFilters, catalogLetters, catalogSearch, catalogCount, catalogNav, catalogGrid]);
+    page.sync = refreshCatalog;
+    return page;
+  }
+
+  // ---- preview: see ANY character from the catalogue without installing it
+  var preview = { code: null, name: '', player: null, token: 0, buffer: null, urls: [], info: null, mode: 'main' };
+
+  function closePreview() {
+    preview.token++;
+    if (preview.player) { try { preview.player.dispose(); } catch (e) { /* ignore */ } preview.player = null; }
+    preview.urls.forEach(function (url) { URL.revokeObjectURL(url); });
+    preview.urls = [];
+    preview.buffer = null;
+    preview.code = null;
+    $('preview-stage').innerHTML = '';
+    document.body.classList.remove('previewing');
+  }
+
+  function previewActions() {
+    var bar = $('preview-actions');
+    bar.innerHTML = '';
+    var code = preview.code;
+    var installed = !!allChars()[code];
+    var modes = el('div', { class: 'seg' }, MODES.map(function (m) {
+      return el('button', { class: 'seg-btn' + (preview.mode === m[0] ? ' active' : ''), text: m[1],
+        onclick: function () { preview.mode = m[0]; previewActions(); respawnPreview(); } });
+    }));
+    bar.appendChild(modes);
+    if (!installed) {
+      bar.appendChild(el('button', { class: 'btn primary', text: 'Guardar en mi colección', onclick: function () {
+        if (!preview.buffer) return;
+        installPack(code, preview.name, preview.buffer.slice(0)).then(function () {
+          toast(preview.name + ' guardado'); refreshCatalog(); refreshPanel(); previewActions();
+        }).catch(function (e) { toast('No se pudo guardar: ' + (e.message || e), 5000); });
+      } }));
+    }
+    for (var i = 1; i <= SLOT_COUNT; i++) {
+      (function (slotNumber) {
+        bar.appendChild(el('button', { class: 'btn', text: 'Hueco ' + slotNumber, title: 'Ponerlo en el hueco ' + slotNumber,
+          onclick: function () {
+            var go = function () { setValue('char' + slotNumber, code); toast(preview.name + ' en el hueco ' + slotNumber); };
+            if (allChars()[code]) { go(); return; }
+            installPack(code, preview.name, preview.buffer.slice(0)).then(function () { refreshCatalog(); go(); previewActions(); })
+              .catch(function (e) { toast('No se pudo guardar: ' + (e.message || e), 5000); });
+          } }));
+      })(i);
+    }
+    if (installed && dbChars[code] && !diskChars[code]) {
+      bar.appendChild(el('button', { class: 'btn danger', text: 'Eliminar', onclick: function () {
+        if (slots.some(function (slot) { return slot.code === code; })) { toast('Se está usando en un hueco'); return; }
+        removePack(code).then(function () { toast(preview.name + ' eliminado'); refreshCatalog(); previewActions(); });
+      } }));
+    }
+    bar.appendChild(el('button', { class: 'btn', text: 'Cerrar', onclick: closePreview }));
+  }
+
+  function openPreview(code, name) {
+    closePreview();
+    preview.mode = 'main';
+    preview.code = code;
+    preview.name = name || charName(code);
+    var token = ++preview.token;
+    document.body.classList.add('previewing');
+    $('preview-name').textContent = preview.name + '  ·  ' + code;
+    $('preview-status').textContent = 'Cargando...';
+    previewActions();
+    var container = $('preview-stage');
+
+    var source;
+    if (diskChars[code]) {
+      source = Promise.resolve({ version: diskChars[code].version, folder: BASE + 'characters/' + code + '/', raw: null });
+    } else if (dbChars[code]) {
+      source = rawUrlsFor(code).then(function (raw) { return { version: dbChars[code].version, folder: 'db/' + code + '/', raw: raw }; });
+    } else {
+      source = downloadPack(code, function (fraction) {
+        if (token === preview.token) $('preview-status').textContent = 'Descargando ' + Math.round(fraction * 100) + '%';
+      }).then(function (buffer) {
+        preview.buffer = buffer;
+        var raw = {};
+        var skelBytes = null;
+        return Promise.all(readZip(buffer).map(function (entry) {
+          var parts = entry.name.split('/');
+          if (parts[0] !== code || parts.length < 2 || !ALLOWED_EXT.test(entry.name)) return null;
+          var load = entry.method === 0 ? Promise.resolve(new Uint8Array(entry.data)) : inflateRaw(entry.data);
+          return load.then(function (bytes) {
+            var rel = parts.slice(1).join('/');
+            if (rel === code + '_00.skel') skelBytes = bytes;
+            return dataUri(new Blob([bytes])).then(function (uri) { raw['pv/' + code + '/' + rel] = uri; });
+          });
+        })).then(function () {
+          if (!skelBytes) throw new Error('el pack no trae ' + code + '_00.skel');
+          return { version: skeletonVersion(skelBytes), folder: 'pv/' + code + '/', raw: raw };
+        });
+      });
+    }
+
+    source.then(function (info) {
+      if (token !== preview.token) return;
+      preview.info = info;
+      $('preview-status').textContent = '';
+      previewActions();
+      respawnPreview();
+    }).catch(function (error) {
+      if (token === preview.token) $('preview-status').textContent = 'No se pudo cargar: ' + (error.message || error);
+    });
+  }
+
+  function respawnPreview() {
+    if (!preview.info || !preview.code) return;
+    var token = ++preview.token;
+    var container = $('preview-stage');
+    if (preview.player) { try { preview.player.dispose(); } catch (e) { /* ignore */ } preview.player = null; }
+    container.innerHTML = '';
+    var code = preview.code;
+    spawnPlayer(container, code, preview.mode, '', preview.info.version, preview.info.folder, preview.info.raw,
+      function () { return token === preview.token; },
+      function (player, animation) {
+        preview.player = player;
+        var names = player.skeleton.data.animations.map(function (a) { return a.name; });
+        var reactions = names.filter(function (n) { return REACTION_RE.test(n) && n !== animation; });
+        container.onclick = function () {
+          if (!reactions.length) return;
+          player.setAnimation(reactions[Math.floor(Math.random() * reactions.length)], false);
+          player.addAnimation(animation, true, 0);
+        };
+      },
+      function () {
+        if (preview.mode !== 'main' && token === preview.token) {
+          toast('Este personaje no tiene esa pose');
+          preview.mode = 'main';
+          previewActions();
+          respawnPreview();
+        }
+      });
+  }
+
+  // ---- picker (choose the character of a slot)
+  function openPicker(index) {
+    pickerTarget = index;
+    pickerPage = 0;
+    document.body.classList.add('picker-open');
+    renderPicker();
+  }
+
+  var pickerPage = 0;
+  var PICKER_PAGE = 14;
+
+  function renderPicker() {
+    var grid = $('picker-grid');
+    grid.innerHTML = '';
+    var current = values['char' + (pickerTarget + 1)];
+    var codes = installedCodes();
+    var pages = Math.max(1, Math.ceil(codes.length / PICKER_PAGE));
+    pickerPage = Math.min(pickerPage, pages - 1);
+    if (pickerPage === 0) {
+      grid.appendChild(makeTile('c000', 'Vacío', { onclick: function () { choose('none'); } }));
+      grid.lastChild.style.backgroundImage = 'none';
+    }
+    codes.slice(pickerPage * PICKER_PAGE, (pickerPage + 1) * PICKER_PAGE).forEach(function (code) {
+      grid.appendChild(makeTile(code, charName(code), { selected: code === current, onclick: function () { choose(code); } }));
+    });
+    var nav = $('picker-nav');
+    nav.innerHTML = '';
+    nav.appendChild(el('button', { class: 'btn', text: '◀', disabled: pickerPage === 0 ? 'disabled' : null, onclick: function () { pickerPage--; renderPicker(); } }));
+    nav.appendChild(el('span', { class: 'page-info', text: 'Página ' + (pickerPage + 1) + ' de ' + pages }));
+    nav.appendChild(el('button', { class: 'btn', text: '▶', disabled: pickerPage >= pages - 1 ? 'disabled' : null, onclick: function () { pickerPage++; renderPicker(); } }));
+    $('picker-title').textContent = 'Personaje del hueco ' + (pickerTarget + 1);
+  }
+
+  function choose(code) {
+    document.body.classList.remove('picker-open');
+    setValue('char' + (pickerTarget + 1), code);
+  }
+
+  // ---- panel shell
+  function refreshPanel() {
+    Object.keys(pageNodes).forEach(function (name) { if (pageNodes[name].sync) pageNodes[name].sync(); });
+    if (document.body.classList.contains('picker-open')) renderPicker();
+  }
+
+  function showTab(name) {
+    Object.keys(pageNodes).forEach(function (key) {
+      pageNodes[key].classList.toggle('active', key === name);
+      $('tab-' + key).classList.toggle('active', key === name);
+    });
+  }
+
+  function setPanel(open) {
+    document.body.classList.toggle('panel-open', open);
+    document.body.classList.toggle('editing', open);
+    if (!open) { document.body.classList.remove('picker-open'); closePreview(); }
+    if (open) refreshPanel();
+  }
+
+  // the engine does not forward the mouse wheel: dragging an empty area of the panel scrolls it instead
+  function makeDragScroll(box) {
+    var state = null;
+    box.addEventListener('mousedown', function (event) {
+      if (event.target.closest('button, input, select, .tile, .swatch, .avatar, .fold, .chip')) return;
+      state = { y: event.clientY, top: box.scrollTop };
+    });
+    window.addEventListener('mousemove', function (event) { if (state) box.scrollTop = state.top - (event.clientY - state.y); });
+    window.addEventListener('mouseup', function () { state = null; });
+  }
+
+  function buildUI() {
+    var tabs = [['chars', 'Personajes'], ['catalog', 'Catálogo'], ['scene', 'Escena']];
+    pageNodes.chars = buildCharactersPage();
+    pageNodes.catalog = buildCatalogPage();
+    pageNodes.scene = buildScenePage();
+    var tabBar = el('div', { class: 'tabs' }, tabs.map(function (t) {
+      return el('button', { class: 'tab', id: 'tab-' + t[0], text: t[1], onclick: function () { showTab(t[0]); } });
+    }));
+    var pagesBox = el('div', { class: 'pages' }, [pageNodes.chars, pageNodes.catalog, pageNodes.scene]);
+    makeDragScroll(pagesBox);
+    var panel = el('div', { id: 'panel' }, [
+      el('header', {}, [el('h1', {}, [document.createTextNode('Nikke '), el('span', { text: 'Stage' })]),
+        el('button', { class: 'icon-btn', id: 'close', title: 'Cerrar', text: '✕', onclick: function () { setPanel(false); } })]),
+      tabBar,
+      pagesBox,
+      el('div', { class: 'scroll-btns' }, [
+        el('button', { class: 'icon-btn', title: 'Subir', text: '▲', onclick: function () { pagesBox.scrollBy({ top: -260, behavior: 'smooth' }); } }),
+        el('button', { class: 'icon-btn', title: 'Bajar', text: '▼', onclick: function () { pagesBox.scrollBy({ top: 260, behavior: 'smooth' }); } })])]);
+    var picker = el('div', { id: 'picker', onclick: function (event) { if (event.target === picker) document.body.classList.remove('picker-open'); } }, [
+      el('div', { class: 'box' }, [el('h2', { id: 'picker-title' }), el('div', { class: 'grid', id: 'picker-grid' }), el('div', { class: 'pager', id: 'picker-nav' }),
+        el('div', { class: 'row' }, [el('button', { class: 'btn primary', text: 'Descargar más personajes', onclick: function () {
+          document.body.classList.remove('picker-open'); showTab('catalog'); } }),
+          el('button', { class: 'btn', text: 'Cancelar', onclick: function () { document.body.classList.remove('picker-open'); } })])])]);
+    document.body.appendChild(el('button', { id: 'gear', title: 'Ajustes de Nikke Stage', text: '⚙',
+      onclick: function () { setPanel(!document.body.classList.contains('panel-open')); } }));
+    document.body.appendChild(panel);
+    document.body.appendChild(el('div', { id: 'preview' }, [el('div', { id: 'preview-stage' }),
+      el('div', { id: 'preview-bar' }, [el('b', { id: 'preview-name' }), el('span', { id: 'preview-status' }), el('div', { id: 'preview-actions' })])]));
+    document.body.appendChild(picker);
+    document.body.appendChild(el('div', { id: 'toast' }));
+    showTab(installedCodes().length ? 'chars' : 'catalog');
+  }
+
+  // ------------------------------------------------------------------ start
+  function loadDiskManifest() {
+    return fetch(BASE + 'characters.json').then(function (r) { return r.json(); })
+      .then(function (data) { diskChars = data.characters || {}; backgroundFile = data.background || null; })
+      .catch(function () { diskChars = {}; });
+  }
+
+  function loadDbChars() {
+    return idb('meta', 'readonly', function (s) { return s.get('chars'); })
+      .then(function (data) { dbChars = data || {}; })
+      .catch(function (e) { console.error('indexedDB: ' + e); dbChars = {}; });
+  }
+
+  function chooseDefaults() {
+    // first run with nothing chosen: put the first installed characters in the free slots
+    var any = false;
+    for (var i = 1; i <= SLOT_COUNT; i++) if (values['char' + i] !== 'none') any = true;
+    if (any) return;
+    var codes = installedCodes();
+    for (var n = 0; n < Math.min(SLOT_COUNT, codes.length, 2); n++) values['char' + (n + 1)] = codes[n];
   }
 
   function start() {
-    showHint();
     for (var i = 0; i < SLOT_COUNT; i++) slots.push(createSlot(i));
-    window.addEventListener('resize', function () {
-      slots.forEach(function (slot) { layout(slot, latest); });
-    });
-    window.wallpaperPropertyListener = { applyUserProperties: apply };
-    // the characters pulse to the music: low bands drive a smoothed level used by applyTransform
+    loadSaved();
+    values = computeValues();
+    chooseDefaults();
+    buildUI();
+    applyAll();
+    loadCatalog();
+    window.addEventListener('resize', function () { slots.forEach(layout); });
+    window.addEventListener('keydown', function (event) { if (event.key === 'Escape') setPanel(false); });
+    window.wallpaperPropertyListener = {
+      applyUserProperties: function (delivered) {
+        Object.keys(delivered || {}).forEach(function (key) { props[key] = delivered[key]; });
+        values = computeValues();
+        applyAll();
+      }
+    };
     if (window.wallpaperRegisterAudioListener) {
       window.wallpaperRegisterAudioListener(function (data) {
         var sum = 0;
-        for (var i = 0; i < 12; i++) sum += data[i] || 0;
-        var target = Math.min(1, sum / 12);
-        level += (target - level) * 0.35;
-        if (bounce > 0) slots.forEach(applyTransform);
+        for (var n = 0; n < 12; n++) sum += data[n] || 0;
+        level += (Math.min(1, sum / 12) - level) * 0.35;
+        if (values.bounce > 0) slots.forEach(applyTransform);
       });
     }
-    // without the engine (or before it delivers the properties) show the first slot's default
-    setTimeout(function () { if (!latest) apply({}); }, 3000);
   }
 
-  fetch(BASE + 'characters.json')
-    .then(function (response) { return response.json(); })
-    .then(function (data) { manifest = data; })
-    .catch(function (e) { console.error('characters.json: ' + e); })
-    .then(start);
+  Promise.all([loadDiskManifest(), loadDbChars()]).then(start);
 })();

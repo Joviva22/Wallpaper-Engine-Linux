@@ -134,6 +134,8 @@ def build_properties(manifest):
     properties["bounce"] = {"order": order, "text": "Latido con la musica (%)", "type": "slider",
                             "min": 0, "max": 30, "step": 1, "value": 0}
     order += 1
+    properties["bgimage"] = {"order": order, "text": "Usar la imagen de fondo (la del sistema)", "type": "bool", "value": True}
+    order += 1
     properties["bgcolor"] = {"order": order, "text": "Color de fondo", "type": "color", "value": "0.047 0.063 0.086"}
     return properties
 
@@ -153,7 +155,86 @@ def make_preview(path):
     return True
 
 
+BACKGROUND_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
+MAX_BACKGROUND_BYTES = 40 * 1024 * 1024
+
+
+def detect_system_wallpaper():
+    """Ruta del fondo de escritorio actual (KDE Plasma) o None. Lee la configuracion de Plasma, que
+    guarda la imagen de cada escritorio en `Image=`; se usa la ultima que exista."""
+    config_file = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                               "plasma-org.kde.plasma.desktop-appletsrc")
+    try:
+        with open(config_file, encoding="utf-8", errors="ignore") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return None
+    found = None
+    in_wallpaper = False
+    for line in lines:
+        if line.startswith("["):
+            in_wallpaper = "[Wallpaper][org.kde.image]" in line
+        elif in_wallpaper and line.startswith("Image="):
+            value = line[len("Image="):].strip()
+            if value.startswith("file://"):
+                value = urllib.request.url2pathname(value[len("file://"):])
+            if os.path.isfile(value) and os.path.splitext(value)[1].lower() in BACKGROUND_EXTENSIONS:
+                found = value
+    return found
+
+
+def set_background(path):
+    """Copia `path` como fondo de Nikke Stage (files/stage/background.<ext>) y lo anota en el manifiesto."""
+    path = os.path.expanduser(path)
+    extension = os.path.splitext(path)[1].lower()
+    if not os.path.isfile(path) or extension not in BACKGROUND_EXTENSIONS:
+        raise PackError(f"Necesito una imagen existente ({', '.join(sorted(BACKGROUND_EXTENSIONS))}).")
+    if os.path.getsize(path) > MAX_BACKGROUND_BYTES:
+        raise PackError("La imagen pesa demasiado (maximo 40 MB).")
+    os.makedirs(config_files(), exist_ok=True)
+    manifest = read_manifest()
+    old = manifest.get("background")
+    name = f"background{extension}"
+    shutil.copyfile(path, os.path.join(config_files(), name))
+    if old and old != name:
+        try:
+            os.remove(os.path.join(config_files(), old))
+        except OSError:
+            pass
+    manifest["background"] = name
+    write_manifest(manifest)
+    return name
+
+
+def clear_background():
+    manifest = read_manifest()
+    old = manifest.pop("background", None)
+    manifest["background_disabled"] = True
+    if old:
+        try:
+            os.remove(os.path.join(config_files(), old))
+        except OSError:
+            pass
+    write_manifest(manifest)
+
+
+def ensure_default_background():
+    """Primera instalacion: usa el fondo del sistema como fondo base, salvo que el usuario ya haya
+    elegido uno (o lo haya quitado a proposito)."""
+    manifest = read_manifest()
+    if manifest.get("background") or manifest.get("background_disabled"):
+        return manifest.get("background")
+    system = detect_system_wallpaper()
+    if system:
+        try:
+            return set_background(system)
+        except PackError:
+            return None
+    return None
+
+
 def install_wallpaper():
+    ensure_default_background()
     workshop = workshop_dir()
     runtime = find_runtime_dir(workshop)
     target = os.path.join(workshop, WALLPAPER_ID)
@@ -165,6 +246,7 @@ def install_wallpaper():
     manifest = read_manifest()
     project = {
         "title": "Nikke Stage",
+        "workshopid": WALLPAPER_ID,
         "type": "web",
         "file": "index.html",
         "tags": ["Anime"],

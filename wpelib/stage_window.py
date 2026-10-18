@@ -71,6 +71,18 @@ class StageCharactersWindow(Gtk.Window):
             buttons.pack_start(button, False, False, 0)
         box.pack_start(buttons, False, False, 0)
 
+        bg_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        bg_row.pack_start(Gtk.Label(label="Fondo:"), False, False, 0)
+        system_bg = Gtk.Button(label="Usar el del sistema")
+        system_bg.connect("clicked", self._on_system_background)
+        choose_bg = Gtk.Button(label="Elegir imagen...")
+        choose_bg.connect("clicked", self._on_choose_background)
+        clear_bg = Gtk.Button(label="Quitar imagen")
+        clear_bg.connect("clicked", self._on_clear_background)
+        for button in (system_bg, choose_bg, clear_bg):
+            bg_row.pack_start(button, False, False, 0)
+        box.pack_start(bg_row, False, False, 0)
+
         status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.spinner = Gtk.Spinner()
         status_row.pack_start(self.spinner, False, False, 0)
@@ -176,6 +188,45 @@ class StageCharactersWindow(Gtk.Window):
         self._run(lambda progress: nikke_stage.add(codes, progress=progress),
                   f"Instalados {len(codes)} personaje(s). Reaplica Nikke Stage para verlos y elige en "
                   f"Personalizar quien va en cada hueco.")
+
+    def _background(self, work, message):
+        if self.busy:
+            return
+        try:
+            work()
+            nikke_stage.install_wallpaper()
+        except PackError as e:
+            self.status.set_text(str(e))
+            return
+        self.status.set_text(message)
+        if self.on_done:
+            self.on_done()
+
+    def _on_system_background(self, _button):
+        source = nikke_stage.detect_system_wallpaper()
+        if not source:
+            self.status.set_text("No pude detectar el fondo del sistema; usa 'Elegir imagen...'.")
+            return
+        self._background(lambda: nikke_stage.set_background(source), "Fondo del sistema aplicado. Reaplica Nikke Stage.")
+
+    def _on_choose_background(self, _button):
+        dialog = Gtk.FileChooserDialog(title="Imagen de fondo", transient_for=self,
+                                       action=Gtk.FileChooserAction.OPEN)
+        dialog.add_buttons("Cancelar", Gtk.ResponseType.CANCEL, "Elegir", Gtk.ResponseType.OK)
+        images = Gtk.FileFilter()
+        images.set_name("Imagenes")
+        for pattern in ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif"):
+            images.add_pattern(pattern)
+        dialog.add_filter(images)
+        if dialog.run() == Gtk.ResponseType.OK:
+            path = dialog.get_filename()
+            dialog.destroy()
+            self._background(lambda: nikke_stage.set_background(path), "Fondo aplicado. Reaplica Nikke Stage.")
+        else:
+            dialog.destroy()
+
+    def _on_clear_background(self, _button):
+        self._background(nikke_stage.clear_background, "Imagen de fondo quitada (se usa el color). Reaplica Nikke Stage.")
 
     def _on_remove(self, _button):
         codes = self._selected_codes()

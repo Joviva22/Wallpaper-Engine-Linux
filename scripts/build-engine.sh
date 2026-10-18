@@ -13,6 +13,7 @@
 #   0007  wallpapers web: API de audio (wallpaperRegisterAudioListener)
 #   0008  wallpapers web: listeners de medios (titulo, artista, estado y posicion del reproductor MPRIS)
 #   0009  wallpapers web: hoja de estilos de usuario (fondo propio, scripts/web-background.py)
+#   0010  Nikke Stage conserva su almacenamiento (ajustes y personajes descargados) entre ejecuciones
 #
 # Requisitos (Arch): git cmake sdl2 glm wayland-protocols xorg-xrandr lz4 ffmpeg mpv glfw
 # glew freeglut libpulse libcups at-spi2-core nss libxcomposite libxdamage nspr.

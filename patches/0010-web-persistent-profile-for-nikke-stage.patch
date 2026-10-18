@@ -1,0 +1,62 @@
+diff --git a/src/WallpaperEngine/WebBrowser/WebBrowserContext.cpp b/src/WallpaperEngine/WebBrowser/WebBrowserContext.cpp
+index 1b2da224..db8eae15 100644
+--- a/src/WallpaperEngine/WebBrowser/WebBrowserContext.cpp
++++ b/src/WallpaperEngine/WebBrowser/WebBrowserContext.cpp
+@@ -1,5 +1,11 @@
+ #include "WebBrowserContext.h"
++#include <fcntl.h>
++#include <sys/file.h>
++#include <unistd.h>
++#include <algorithm>
++#include <cstdlib>
+ #include "CEF/BrowserApp.h"
++#include "WallpaperEngine/Data/Model/Project.h"
+ #include "WallpaperEngine/Logging/Log.h"
+ #include "WallpaperEngine/WebBrowser/CEF/SubprocessApp.h"
+ #include "include/cef_app.h"
+@@ -76,12 +82,45 @@ WebBrowserContext::WebBrowserContext (WallpaperEngine::Application::WallpaperApp
+     // Configurate Chromium
+     CefSettings settings;
+     std::string cache_path = (std::filesystem::temp_directory_path () / uuid::generate_uuid_v4 ()).string ();
++    std::string profile_path;
++
++    // The user's own "Nikke Stage" wallpaper (project 9100000001) keeps its browser storage (localStorage and
++    // IndexedDB: its settings and the character packs it downloads) between runs, in a profile dir of its own.
++    // Every other wallpaper keeps using a throwaway profile. The dir is locked so two engine processes never
++    // share it (the second one falls back to a temporary profile).
++    if (const auto& backgrounds = this->m_wallpaperApplication.getBackgrounds ();
++	!backgrounds.empty ()
++	&& std::all_of (backgrounds.begin (), backgrounds.end (), [] (const auto& pair) -> bool {
++	       return pair.second->workshopId == "9100000001";
++	   })) {
++	const char* xdg = getenv ("XDG_CACHE_HOME");
++	const char* home = getenv ("HOME");
++	const std::string base = (xdg && *xdg) ? std::string (xdg) : (home && *home ? std::string (home) + "/.cache" : "");
++
++	if (!base.empty ()) {
++	    const std::filesystem::path dir = std::filesystem::path (base) / "wallpaperengine-picker" / "cef" / "9100000001";
++	    std::error_code error;
++
++	    std::filesystem::create_directories (dir, error);
++
++	    // intentionally kept open for the life of the process: the lock is released when it exits
++	    const int lock = error ? -1 : open ((dir / ".lock").c_str (), O_CREAT | O_RDWR, 0600);
++
++	    if (lock >= 0 && flock (lock, LOCK_EX | LOCK_NB) == 0) {
++		cache_path = dir.string ();
++		profile_path = (dir / "profile").string ();
++	    }
++	}
++    }
+     // CefString(&settings.locales_dir_path) = "OffScreenCEF/godot/locales";
+     // CefString(&settings.resources_dir_path) = "OffScreenCEF/godot/";
+     // CefString(&settings.framework_dir_path) = "OffScreenCEF/godot/";
+     // CefString(&settings.cache_path) = "OffScreenCEF/godot/";
+     //  CefString(&settings.browser_subprocess_path) = "path/to/client"
+     cef_string_utf8_to_utf16 (cache_path.c_str (), cache_path.length (), &settings.root_cache_path);
++    if (!profile_path.empty ()) {
++	cef_string_utf8_to_utf16 (profile_path.c_str (), profile_path.length (), &settings.cache_path);
++    }
+     settings.windowless_rendering_enabled = true;
+ #if defined(CEF_NO_SANDBOX)
+     settings.no_sandbox = true;

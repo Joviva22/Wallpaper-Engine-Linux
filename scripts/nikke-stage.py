@@ -13,6 +13,7 @@ Uso:
     scripts/nikke-stage.py list                   # personajes instalados
     scripts/nikke-stage.py remove c800
     scripts/nikke-stage.py install                # (re)instala el wallpaper y sus propiedades
+    scripts/nikke-stage.py background system      # fondo = el del escritorio (por defecto); o una RUTA; o none
 Tambien se gestiona desde Elegir Fondo (Acciones > Nikke Stage: personajes), con buscador y boton
 de descarga. Despues aplica "Nikke Stage" y en Personalizar elige el personaje de cada hueco, su
 posicion, tamano, altura, espejo y mas. Requiere el motor parcheado (patches/0005 y 0009).
@@ -28,14 +29,25 @@ from wpelib.l2d_pack import PackError  # noqa: E402
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=("add", "remove", "list", "install", "search"))
+    parser.add_argument("command", choices=("add", "remove", "list", "install", "search", "background"))
     parser.add_argument("codes", nargs="*")
     args = parser.parse_args()
     if args.command == "list":
         for code, entry in sorted(nikke_stage.read_manifest()["characters"].items()):
             print(f"{code}  {entry.get('name', code)}  (Spine {entry.get('version')})")
         return
-    if args.command == "install":
+    if args.command == "background":
+        what = args.codes[0] if args.codes else "system"
+        if what == "none":
+            nikke_stage.clear_background()
+            print("Fondo de imagen quitado (se usa el color de fondo).")
+        else:
+            source = nikke_stage.detect_system_wallpaper() if what == "system" else what
+            if not source:
+                raise PackError("No pude detectar el fondo del sistema; indica una imagen: background RUTA.")
+            print(f"Fondo: {nikke_stage.set_background(source)} (de {source})")
+        target = nikke_stage.install_wallpaper()
+    elif args.command == "install":
         target = nikke_stage.install_wallpaper()
     elif not args.codes:
         parser.error("indica al menos un personaje (codigo o nombre)")
