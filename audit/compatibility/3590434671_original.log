@@ -1,0 +1,22 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-lz5d129j/library/3590434671
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericimage4
+GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)
+ERROR: 0:165: '' : missing #endif
+ERROR: 0:165: '' : compilation terminated
+ERROR: 3 compilation errors.  No code generated.
+
+
+0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Failed to setup object 17: 0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Stop requested by signal 15
+Stopping

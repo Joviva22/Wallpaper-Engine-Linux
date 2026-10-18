@@ -1,0 +1,119 @@
+[
+  {
+    "shader": "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+    "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+    "ids": [
+      "2407172811",
+      "3535044281",
+      "3563096027",
+      "3611439897",
+      "3684060242"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "shader": "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+    "sha256": "0608e9e36f29234827179234ab8186e389dbff043df8ed80386a1fb14bb274fe",
+    "ids": [
+      "3151551777"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "shader": "shaders/workshop/3523098019/effects/Simple_Audio_Bars.vert",
+    "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+    "ids": [
+      "3526096300"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "shader": "shaders/workshop/2973943998/effects/iris_movement__.vert",
+    "sha256": "974eeb7fa6d8e923816d77c9cb9f5c91fcc50a403d23605c91b85ba7fe8c104e",
+    "ids": [
+      "3535044281",
+      "3590434671"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:95: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "shader": "shaders/workshop/3624642656/effects/Simple_Audio_Bars.vert",
+    "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+    "ids": [
+      "3637044670"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "shader": "shaders/workshop/3632410990/effects/Simple_Audio_Bars.vert",
+    "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+    "ids": [
+      "3637044670"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "shader": "shaders/workshop/3612110662/effects/Simple_Audio_Bars.vert",
+    "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+    "ids": [
+      "3701356561"
+    ],
+    "repair_available": true,
+    "original": {
+      "returncode": 2,
+      "stderr": "ERROR: /tmp/wpe-shader-preprocess-rbmhhvx1/original.vert:72: '#endif' : mismatched statements \nERROR: 1 compilation errors.  No code generated.\n\n\n"
+    },
+    "repaired": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  }
+]

@@ -256,6 +256,61 @@ class RepairTest(unittest.TestCase):
         self.assertIn(b"helper() {audioCoord.x += 1.;}", files[names[3]])
         self.assertIn(b"float waveCoord = 0.0;", files[names[3]])
 
+    def test_known_fragments_are_reused_across_workshop_ids(self):
+        import hashlib
+        from unittest import mock
+        name = "shaders/workshop/999999/effects/test_shader.frag"
+        raw = b"varying vec2 v_TexCoord;\nvec2 fragPos = v_TexCoord;"
+        digest = hashlib.sha256(raw).hexdigest()
+        files = {name: raw, "custom/test_shader.frag": raw}
+        registry = {"shaders/workshop/1/effects/test_shader.frag": digest}
+        with mock.patch.object(repair, "_KNOWN_FRAGMENT_HASHES", registry):
+            self.assertEqual(repair._fix_known_fragment_shaders(files), ["test_shader.frag"])
+        self.assertIn(b"v_TexCoord.xy;", files[name])
+        self.assertEqual(files["custom/test_shader.frag"], raw)
+
+    def test_audio_vertex_variants_are_reused_across_workshop_ids(self):
+        import hashlib
+        from unittest import mock
+        raw = b"// fixture\n" * 69 + b"#endif\nvoid main() {}"
+        files = {f"shaders/workshop/{wid}/effects/Simple_Audio_Bars.vert": raw for wid in (1, 2)}
+        files["custom/Simple_Audio_Bars.vert"] = raw
+        with mock.patch.object(repair, "_AUDIO_BARS_BROKEN_SHA256", hashlib.sha256(raw).hexdigest()):
+            self.assertTrue(repair._fix_audio_bars_shader(files))
+            self.assertFalse(repair._fix_audio_bars_shader(files))
+        self.assertEqual(files["custom/Simple_Audio_Bars.vert"], raw)
+        self.assertNotIn(b"#endif", files["shaders/workshop/2/effects/Simple_Audio_Bars.vert"])
+
+    def test_oscilloscope_uniform_initializers_run_inside_main(self):
+        import hashlib
+        from unittest import mock
+        name = "shaders/workshop/1/effects/audio_responsive_oscilloscope.frag"
+        raw = (b"const vec2 userBalance = vec2(freqBalance);\n"
+               b"const float lowBalanceMultipier = pow(userBalance.x / userBalance.y, 2.0);\n"
+               b"void main() { use(userBalance); }")
+        with mock.patch.object(repair, "_KNOWN_FRAGMENT_HASHES", {name: hashlib.sha256(raw).hexdigest()}):
+            files = {name: raw}
+            self.assertEqual(repair._fix_known_fragment_shaders(files), ["audio_responsive_oscilloscope.frag"])
+            self.assertEqual(repair._fix_known_fragment_shaders(files), [])
+        head, body = files[name].split(b"void main() {", 1)
+        self.assertIn(b"vec2 userBalance;", head)
+        self.assertNotIn(b"freqBalance", head)
+        self.assertIn(b"userBalance = vec2(freqBalance);", body)
+        self.assertLess(body.index(b"userBalance ="), body.index(b"lowBalanceMultipier ="))
+
+    def test_iris_fix_is_exact_and_idempotent(self):
+        import hashlib
+        from unittest import mock
+        name = "shaders/workshop/1/effects/iris_movement__.vert"
+        raw = b"// fixture\n" * 92 + b"#endif\nvec2 da = transformedCursorPosition * g_CursorScale;"
+        files = {name: raw}
+        self.assertFalse(repair._fix_iris_movement_shader(files))
+        with mock.patch.object(repair, "_IRIS_BROKEN_SHA256", hashlib.sha256(raw).hexdigest()):
+            self.assertTrue(repair._fix_iris_movement_shader(files))
+            self.assertFalse(repair._fix_iris_movement_shader(files))
+        self.assertNotIn(b"#endif", files[name])
+        self.assertIn(b"transformedCursorPosition.xy *", files[name])
+
     def test_unknown_fragment_versions_are_untouched(self):
         files = {name: b"void main() {}" for name in repair._KNOWN_FRAGMENT_HASHES}
         before = dict(files)

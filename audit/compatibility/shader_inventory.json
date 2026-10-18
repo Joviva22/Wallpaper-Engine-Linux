@@ -1,0 +1,518 @@
+{
+  "scope": "Inspección estática de paquetes actuales, sin ejecutar fondos ni modificar biblioteca. Patrones requieren confirmar con motor y combos activos.",
+  "counts": {
+    "folders": 400,
+    "packages": 239,
+    "shader_entries": 2908
+  },
+  "unique_shader_versions": 860,
+  "candidates": [
+    {
+      "shader": "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+      "ids": [
+        "2407172811",
+        "3535044281",
+        "3563096027",
+        "3611439897",
+        "3684060242"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag",
+      "sha256": "8993311eeb3ea2d5be6665b0947351859a2ba5e102a8db4a870d30d12d9fc9ef",
+      "ids": [
+        "2407172811",
+        "3535044281",
+        "3563096027",
+        "3611439897",
+        "3684060242"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 14
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2423877731/effects/chromatic_aberration.frag",
+      "sha256": "64a9867c54306173175f9382ba967eeafa4d8006bb4a3155813dc6b4f5272cd2",
+      "ids": [
+        "2794089817",
+        "2843745418",
+        "3537671609",
+        "3561551763",
+        "3585875739"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 1
+        },
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "rValue",
+          "writes": 2
+        },
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "gValue",
+          "writes": 2
+        },
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "bValue",
+          "writes": 2
+        },
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "timer",
+          "writes": 1
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2872146492/effects/color_grading.frag",
+      "sha256": "057a0267e57cafd582a82630d39f2f02b6ccc42a2c6a205f2dc6f801880ad996",
+      "ids": [
+        "2896906752",
+        "2925278995"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "colorMatrix",
+          "uniforms": [
+            "c_blue",
+            "c_green",
+            "c_red"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2532085115/effects/old_film.frag",
+      "sha256": "c5b29528d6fe3a41a0ca603ca1656672711e5a9972c7b81f607f4ef7f7bf5de5",
+      "ids": [
+        "2947399331",
+        "2967540199",
+        "3653171633"
+      ],
+      "findings": [
+        {
+          "code": "WIDE_UV_VEC2_ARITHMETIC"
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2138904733/effects/cutout_vignette.frag",
+      "sha256": "8ccd733e593f5f12611cd92cf02fa4306cac4fc465797614f80b813ed293ed32",
+      "ids": [
+        "2948618803",
+        "2971987338",
+        "2990989001",
+        "3637044670"
+      ],
+      "findings": [
+        {
+          "code": "WIDE_UV_VEC2_ARITHMETIC"
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2911547294/effects/procedural_noise.frag",
+      "sha256": "249c15d92340a1fd47403ad00aaa155704784bc1803177dd047b76665ae51a55",
+      "ids": [
+        "2957128564"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "speed",
+          "uniforms": [
+            "u_speed"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "animate",
+          "uniforms": [
+            "g_Time",
+            "u_speed"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "albedo",
+          "uniforms": [
+            "g_Texture0"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "mask",
+          "uniforms": [
+            "g_Texture1"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "coord",
+          "uniforms": [
+            "u_offset",
+            "u_scale"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "opacity",
+          "uniforms": [
+            "u_alpha"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2795521260/effects/color_grading.frag",
+      "sha256": "057a0267e57cafd582a82630d39f2f02b6ccc42a2c6a205f2dc6f801880ad996",
+      "ids": [
+        "2967540199",
+        "2971987338",
+        "3042793806"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "colorMatrix",
+          "uniforms": [
+            "c_blue",
+            "c_green",
+            "c_red"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2487531853/effects/lens_flare_sun.frag",
+      "sha256": "c2550d5777ead7a0db940becc4c6aa35a854c1fa15715e520a672774d0aa8a9b",
+      "ids": [
+        "2967540199",
+        "2973821653",
+        "3309685345"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "timer",
+          "writes": 1
+        },
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "timer2",
+          "writes": 1
+        },
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "rotation",
+          "writes": 1
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2812601803/effects/tone_mapping.frag",
+      "sha256": "0e60201f05914b855ade5ac7b076d2392f8848e5a07ad05233758cb1aa8bb2b9",
+      "ids": [
+        "2967540199"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "mask",
+          "uniforms": [
+            "g_Texture1"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "mask",
+          "uniforms": [
+            "g_Texture1"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2904916830/effects/isolate_particles.frag",
+      "sha256": "8bb795efc5086bed41cbca96355dc49e2eee62fc8b61f22adf0915c1ad5b50f5",
+      "ids": [
+        "2967540199"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "image",
+          "uniforms": [
+            "g_Texture2"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2904916830/effects/re_apply_image.frag",
+      "sha256": "16b75641b17696b6bdef876a801eb4385c633ca2da85d94614f91145bae9602c",
+      "ids": [
+        "2967540199"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "opacity",
+          "uniforms": [
+            "g_Texture2",
+            "u_alpha"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/effects/dot_pattern.frag",
+      "sha256": "df6527020efac06bff9e3caf58ead59aecdc93fac6da5f572c4cc5120e1011e6",
+      "ids": [
+        "3002120692"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "blurAmount",
+          "uniforms": [
+            "u_DotBlurAmount"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "dotRadius",
+          "uniforms": [
+            "u_DotRadius"
+          ]
+        },
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "cellSize",
+          "uniforms": [
+            "u_DotSpacing"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag",
+      "sha256": "4fb5eed2c8bf8abbdd29403cc82bb743c5350a9d37ffec48ad2b8c7edd8b7278",
+      "ids": [
+        "3151551777"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 14
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "sha256": "0608e9e36f29234827179234ab8186e389dbff043df8ed80386a1fb14bb274fe",
+      "ids": [
+        "3151551777"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3184560948/effects/color_grading.frag",
+      "sha256": "a937fdbb89d040ecb71591b3da76dd47c5df819b92311ce3a8804a40c470804f",
+      "ids": [
+        "3158063102"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "cosAngle",
+          "uniforms": [
+            "u_hueShift"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2402621362/effects/sine_wave.frag",
+      "sha256": "a4e8822e605698745ce06f4d014d4dd1a589af8cc76317f44ed1f4bb07071d5f",
+      "ids": [
+        "3208556055"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 2
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2795521260/effects/color_grading.frag",
+      "sha256": "a937fdbb89d040ecb71591b3da76dd47c5df819b92311ce3a8804a40c470804f",
+      "ids": [
+        "3210875135",
+        "3223077541",
+        "3248239912",
+        "3479671230",
+        "3637044670",
+        "3701356561"
+      ],
+      "findings": [
+        {
+          "code": "CONST_FROM_UNIFORM",
+          "variable": "cosAngle",
+          "uniforms": [
+            "u_hueShift"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3523098019/effects/Simple_Audio_Bars.frag",
+      "sha256": "8993311eeb3ea2d5be6665b0947351859a2ba5e102a8db4a870d30d12d9fc9ef",
+      "ids": [
+        "3526096300"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 14
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3523098019/effects/Simple_Audio_Bars.vert",
+      "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+      "ids": [
+        "3526096300"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/2973943998/effects/iris_movement__.vert",
+      "sha256": "974eeb7fa6d8e923816d77c9cb9f5c91fcc50a403d23605c91b85ba7fe8c104e",
+      "ids": [
+        "3535044281",
+        "3590434671"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 93
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3632410990/effects/Simple_Audio_Bars.frag",
+      "sha256": "8993311eeb3ea2d5be6665b0947351859a2ba5e102a8db4a870d30d12d9fc9ef",
+      "ids": [
+        "3637044670"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 14
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3624642656/effects/Simple_Audio_Bars.vert",
+      "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+      "ids": [
+        "3637044670"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3624642656/effects/Simple_Audio_Bars.frag",
+      "sha256": "8993311eeb3ea2d5be6665b0947351859a2ba5e102a8db4a870d30d12d9fc9ef",
+      "ids": [
+        "3637044670"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 14
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3632410990/effects/Simple_Audio_Bars.vert",
+      "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+      "ids": [
+        "3637044670"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3612110662/effects/Simple_Audio_Bars.vert",
+      "sha256": "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a",
+      "ids": [
+        "3701356561"
+      ],
+      "findings": [
+        {
+          "code": "ORPHAN_ENDIF",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "shader": "shaders/workshop/3612110662/effects/Simple_Audio_Bars.frag",
+      "sha256": "8993311eeb3ea2d5be6665b0947351859a2ba5e102a8db4a870d30d12d9fc9ef",
+      "ids": [
+        "3701356561"
+      ],
+      "findings": [
+        {
+          "code": "MUTATED_FRAGMENT_INPUT",
+          "variable": "v_TexCoord",
+          "writes": 14
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

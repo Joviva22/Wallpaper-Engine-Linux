@@ -1,0 +1,14 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-4d3_0n4d/library/2947399331
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Unsupported puppet model header MDLV0016 in models/asd_puppet.mdl
+Unsupported puppet model header MDLV0016 in models/asd_puppet.mdl
+Applied fragment TexCoord vec2 compatibility in workshop/2532085115/effects/old_film
+Applied fragment TexCoord vec2 compatibility in workshop/2532085115/effects/old_film
+Applied fragment TexCoord vec2 compatibility in workshop/2532085115/effects/old_film
+Applied fragment TexCoord vec2 compatibility in workshop/2532085115/effects/old_film
+ScriptEngine [layer.update]: TypeError: cannot read property 'name' of undefined
+Stop requested by signal 15
+Stopping

@@ -1,0 +1,78 @@
+{
+  "2794089817": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "2794089817_original.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "2947399331": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "2947399331_original.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "ScriptEngine [layer.update]: TypeError: cannot read property 'name' of undefined"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "2948618803": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "2948618803_original.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "2967540199": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "2967540199_original.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3535044281": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3535044281_original.log",
+      "shader_errors": [
+        "GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 21: 0:1(1): error: syntax error, unexpected end of file"
+      ],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)",
+        "ERROR: 0:165: '' : missing #endif ",
+        "ERROR: 0:165: '' : compilation terminated ",
+        "ERROR: 3 compilation errors.  No code generated.",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 21: 0:1(1): error: syntax error, unexpected end of file"
+      ]
+    },
+    "original_unchanged": true
+  }
+}

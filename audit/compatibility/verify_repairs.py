@@ -19,7 +19,7 @@ library = steam / 'workshop/content/431960'
 repair.WORKSHOP_DIR = str(work / 'library')
 engine = real_home / '.local/opt/linux-wallpaperengine/bin/linux-wallpaperengine'
 assets = steam / 'common/wallpaper_engine/assets'
-report = Path(__file__).with_name('repair_verification.json')
+report = Path(__file__).with_name(os.environ.get('WPE_REPAIR_REPORT', 'repair_verification.json'))
 results = json.loads(report.read_text()) if report.exists() else {}
 ids = sys.argv[1:] or ['3789816832', '3802742966', '3088099655', '3789790717']
 for wid in ids:
@@ -37,7 +37,7 @@ for wid in ids:
         else:
             (folder / entry.name).symlink_to(entry)
     original = hashlib.sha256((source / 'scene.pkg').read_bytes()).hexdigest()
-    variants = ['original', 'repaired'] if wid in ('3789816832', '3802742966') else ['original']
+    variants = ['original', 'repaired'] if wid not in ('3088099655', '3789790717') and not os.environ.get('WPE_ORIGINAL_ONLY') else ['original']
     case = {}
     for variant in variants:
         if variant == 'repaired':
@@ -72,7 +72,7 @@ for wid in ids:
     case['original_unchanged'] = hashlib.sha256((source / 'scene.pkg').read_bytes()).hexdigest() == original
     assert case['original_unchanged']
     results[wid] = case
-report = Path(__file__).with_name('repair_verification.json')
+report = Path(__file__).with_name(os.environ.get('WPE_REPAIR_REPORT', 'repair_verification.json'))
 report.write_text(json.dumps(results, ensure_ascii=False, indent=2) + '\n')
 print(json.dumps(results, ensure_ascii=False, indent=2))
 

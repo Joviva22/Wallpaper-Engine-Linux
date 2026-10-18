@@ -1,0 +1,186 @@
+{
+  "2407172811": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag"
+    ],
+    "before_sha256": "2745eb6af85a5556ce0f27c1f9d8120f5669fd9d0894e5e29bf455a100a2b992",
+    "after_sha256": "36f96a7083946876e04df71f204112251f1d943be8bb4f999497556a7b040104",
+    "backup_sha256": "2745eb6af85a5556ce0f27c1f9d8120f5669fd9d0894e5e29bf455a100a2b992"
+  },
+  "2919854127": {
+    "message": "Reparado: 2 campo(s) 'padding' corregidos; shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2342779250/effects/test_shader.frag"
+    ],
+    "before_sha256": "57ae6f379bbe60a7a0337df3f3f91ebdc89fa44f6d832965bbe9c05c346f68d4",
+    "after_sha256": "7ad8c6cc66aeae0e8041b65bd760f5169f957ed96bb57c1053b7eceac5f99a94",
+    "backup_sha256": "57ae6f379bbe60a7a0337df3f3f91ebdc89fa44f6d832965bbe9c05c346f68d4"
+  },
+  "2973821653": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2342779250/effects/test_shader.frag"
+    ],
+    "before_sha256": "84fc7642400573dc2c67f28efd7fab1f9aae902be0834ef889734cfaf0f354bf",
+    "after_sha256": "ba17a4d3e50f4670f3e9b2e98686647ef239ff75619871a3b8e441337b7e36b6",
+    "backup_sha256": "84fc7642400573dc2c67f28efd7fab1f9aae902be0834ef889734cfaf0f354bf"
+  },
+  "3001442160": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2844906964/effects/test_shader.frag"
+    ],
+    "before_sha256": "49d49a60f5be49bfc953577bc81e2c18994f8a77727ad2657213e30ef52b051d",
+    "after_sha256": "569602c7f8e72328befa76bd4ef9a125c70fc16d99cc0358d9377f8eca748df5",
+    "backup_sha256": "49d49a60f5be49bfc953577bc81e2c18994f8a77727ad2657213e30ef52b051d"
+  },
+  "3086490516": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2844906964/effects/test_shader.frag"
+    ],
+    "before_sha256": "7da02a38a74f6e463ca772a958c773cff82beff55f077503c6f82e4f0b0b5c48",
+    "after_sha256": "fbc8467d85521e1bc7276b8e05d822e2cc4659e52ca7c21e3fec4c0ddebfddfa",
+    "backup_sha256": "7da02a38a74f6e463ca772a958c773cff82beff55f077503c6f82e4f0b0b5c48"
+  },
+  "3151551777": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag",
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert"
+    ],
+    "before_sha256": "07ff04ebf6cf05b25daa45e4430a5d76f045ca5090235aa63a2bcebf23174c1e",
+    "after_sha256": "dfd8c768e525eb5efe1bed4b836a21e3826fce671360f59a87e6f4f444f05ff8",
+    "backup_sha256": "07ff04ebf6cf05b25daa45e4430a5d76f045ca5090235aa63a2bcebf23174c1e"
+  },
+  "3208556055": {
+    "message": "Reparado: shaders de fragmento corregidos: sine_wave.frag, audio_responsive_oscilloscope.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2402621362/effects/sine_wave.frag",
+      "shaders/workshop/2799421411/effects/audio_responsive_oscilloscope.frag"
+    ],
+    "before_sha256": "6f952d3950356c8644fdfc102c41176d5fa69de387e0211b4d99be42d61e2f57",
+    "after_sha256": "c3cbabf1c5b9693b7e0a30424ffccd68ad81d6004c187553285f5abc55c427e0",
+    "backup_sha256": "6f952d3950356c8644fdfc102c41176d5fa69de387e0211b4d99be42d61e2f57"
+  },
+  "3211109911": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2342779250/effects/test_shader.frag"
+    ],
+    "before_sha256": "e033b7f7c884136dc7f63de474a64c65be7f2a58ff7dc111b3ba21bae94c270e",
+    "after_sha256": "92499d269bfdcb869c2cec3a5894bda837f4a8c2d506c6498353c63423b096ec",
+    "backup_sha256": "e033b7f7c884136dc7f63de474a64c65be7f2a58ff7dc111b3ba21bae94c270e"
+  },
+  "3477054430": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2342779250/effects/test_shader.frag"
+    ],
+    "before_sha256": "e524945b1152f50c0be83d7f40dfd4003663d86060728737ac78a615826b9dbe",
+    "after_sha256": "e4c7e3c7cb34869e09077511b44f82d589821f7f37790ea386128f227647636f",
+    "backup_sha256": "e524945b1152f50c0be83d7f40dfd4003663d86060728737ac78a615826b9dbe"
+  },
+  "3526096300": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3523098019/effects/Simple_Audio_Bars.frag",
+      "shaders/workshop/3523098019/effects/Simple_Audio_Bars.vert"
+    ],
+    "before_sha256": "2992646f2722e66784294ec09570a5fc7db2796b849b4ee7f64307baa209bceb",
+    "after_sha256": "3f825cd4fe3f4db05d4593b83fc915a0c94462fb47b9f3f4cc4609a2e5a461a9",
+    "backup_sha256": "2992646f2722e66784294ec09570a5fc7db2796b849b4ee7f64307baa209bceb"
+  },
+  "3535044281": {
+    "message": "Reparado: shader de movimiento de ojos corregido; shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag",
+      "shaders/workshop/2973943998/effects/iris_movement__.vert"
+    ],
+    "before_sha256": "2e1c50ed14c8b384be84d810a4af172d43abbbfbe6cede3a482006e2aee874d1",
+    "after_sha256": "332161291757d484eeaab452060d6c75c222cd1c6d38cb5204e243caef607369",
+    "backup_sha256": "2e1c50ed14c8b384be84d810a4af172d43abbbfbe6cede3a482006e2aee874d1"
+  },
+  "3561551763": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2844906964/effects/test_shader.frag"
+    ],
+    "before_sha256": "453c4fd05ba277ad4d461a112ebfa59090135a49e027b66ca5ffbc357b21699f",
+    "after_sha256": "5486730e50a42ff0651d1554e29fc5f8a3be21068356df6e617d63bcfec7c680",
+    "backup_sha256": "453c4fd05ba277ad4d461a112ebfa59090135a49e027b66ca5ffbc357b21699f"
+  },
+  "3563096027": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag"
+    ],
+    "before_sha256": "8024795e3b7fed63f0519b0633763cfcceff3dd4bc653c9ad52187f42c6c0a76",
+    "after_sha256": "e3d43b6b466a9500b0bcb813273fc488decf93be3dfdf03587653cbda9fc26c6",
+    "backup_sha256": "8024795e3b7fed63f0519b0633763cfcceff3dd4bc653c9ad52187f42c6c0a76"
+  },
+  "3576436521": {
+    "message": "Reparado: shaders de fragmento corregidos: test_shader.frag (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2844906964/effects/test_shader.frag"
+    ],
+    "before_sha256": "c1adc56ab63d3224cb9dff838e30dffe36abaa919bb6cf4d6bebce1033fb3faf",
+    "after_sha256": "195d578a8d78d60198495ff172fee5c46d0180e807cabd63be2715074b7b65a9",
+    "backup_sha256": "c1adc56ab63d3224cb9dff838e30dffe36abaa919bb6cf4d6bebce1033fb3faf"
+  },
+  "3590434671": {
+    "message": "Reparado: shader de movimiento de ojos corregido (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/2973943998/effects/iris_movement__.vert"
+    ],
+    "before_sha256": "4017114b47b527414e37e096ed992807d884897a8622143381ee34b3b0526bcd",
+    "after_sha256": "d785fe69899add4fbbfaf480f53bcc28e78da86cd32b16c6af0e5b1d66cdc356",
+    "backup_sha256": "4017114b47b527414e37e096ed992807d884897a8622143381ee34b3b0526bcd"
+  },
+  "3611439897": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag"
+    ],
+    "before_sha256": "46a75bd066f499ca44a94be6507f93f93317fdc923741d19844c033251db2b68",
+    "after_sha256": "3dcfdd41e3bffc032acab751a06b93e717f4808c204437e6b5977ef4fd5e0e86",
+    "backup_sha256": "46a75bd066f499ca44a94be6507f93f93317fdc923741d19844c033251db2b68"
+  },
+  "3637044670": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag, Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3632410990/effects/Simple_Audio_Bars.frag",
+      "shaders/workshop/3624642656/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3624642656/effects/Simple_Audio_Bars.frag",
+      "shaders/workshop/3632410990/effects/Simple_Audio_Bars.vert"
+    ],
+    "before_sha256": "8673b9aad3688858e744e2b141dd0826497bd2b41596c2de27b81f797eeed1f0",
+    "after_sha256": "cbe901711075cfdbd1ff75337b8e4ae4acfa1a9f73cb7092ea80b8fb7702cfc0",
+    "backup_sha256": "8673b9aad3688858e744e2b141dd0826497bd2b41596c2de27b81f797eeed1f0"
+  },
+  "3684060242": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3082978660/effects/Simple_Audio_Bars.frag"
+    ],
+    "before_sha256": "0d24b32758b70ba4f53e447ad732c4ad085debddc9a5a495937916f91cbbc8d8",
+    "after_sha256": "45a5e8872e457d97783303020ff9f05138040c538d4a9cd9cdd8eb0ad7808181",
+    "backup_sha256": "0d24b32758b70ba4f53e447ad732c4ad085debddc9a5a495937916f91cbbc8d8"
+  },
+  "3701356561": {
+    "message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "resources": [
+      "shaders/workshop/3612110662/effects/Simple_Audio_Bars.vert",
+      "shaders/workshop/3612110662/effects/Simple_Audio_Bars.frag"
+    ],
+    "before_sha256": "b3bb91bef545a1150058b5aa62e7f313834121dda9e46d18c8bfc80fab39154d",
+    "after_sha256": "a111ee54a020519c6a9b2278d22e366803240079ab5f632b37956c752cf1f9f1",
+    "backup_sha256": "b3bb91bef545a1150058b5aa62e7f313834121dda9e46d18c8bfc80fab39154d"
+  }
+}

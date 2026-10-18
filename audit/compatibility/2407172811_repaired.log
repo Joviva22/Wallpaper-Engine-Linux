@@ -1,0 +1,17 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-5cgsngjm/library/2407172811
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Stop requested by signal 15
+Stopping

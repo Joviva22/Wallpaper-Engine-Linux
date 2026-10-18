@@ -233,14 +233,42 @@ _AUDIO_BARS_BROKEN_SHA256 = "0608e9e36f29234827179234ab8186e389dbff043df8ed80386
 
 def _fix_audio_bars_shader(raw_by_name):
     """Elimina solo el #endif huérfano del recurso diagnosticado y verificado."""
-    raw = raw_by_name.get(_AUDIO_BARS_SHADER)
-    if raw is None or hashlib.sha256(raw).hexdigest() != _AUDIO_BARS_BROKEN_SHA256:
-        return False
-    lines = raw.splitlines(keepends=True)
-    if len(lines) <= 69 or lines[69].strip() != b"#endif":
-        return False
-    raw_by_name[_AUDIO_BARS_SHADER] = b"".join(lines[:69] + lines[70:])
-    return True
+    fixed = False
+    hashes = {_AUDIO_BARS_BROKEN_SHA256,
+              "c70a5978bff0a016a9dc4f77ede6327d06a776a74268b0d3eff2cd57f899ea3a"}
+    for name, raw in list(raw_by_name.items()):
+        if not re.fullmatch(r"shaders/workshop/\d+/effects/Simple_Audio_Bars\.vert", name):
+            continue
+        if hashlib.sha256(raw).hexdigest() not in hashes:
+            continue
+        lines = raw.splitlines(keepends=True)
+        if len(lines) <= 69 or lines[69].strip() != b"#endif":
+            continue
+        raw_by_name[name] = b"".join(lines[:69] + lines[70:])
+        fixed = True
+    return fixed
+
+
+
+_IRIS_BROKEN_SHA256 = "974eeb7fa6d8e923816d77c9cb9f5c91fcc50a403d23605c91b85ba7fe8c104e"
+
+
+def _fix_iris_movement_shader(raw_by_name):
+    """Corrige directiva y dimensiones UV de la versión conocida de iris."""
+    fixed = False
+    for name, raw in list(raw_by_name.items()):
+        if not re.fullmatch(r"shaders/workshop/\d+/effects/iris_movement__\.vert", name):
+            continue
+        if hashlib.sha256(raw).hexdigest() != _IRIS_BROKEN_SHA256:
+            continue
+        lines = raw.splitlines(keepends=True)
+        if len(lines) <= 92 or lines[92].strip() != b"#endif":
+            continue
+        new = b"".join(lines[:92] + lines[93:])
+        new = new.replace(b"vec2 da = transformedCursorPosition *", b"vec2 da = transformedCursorPosition.xy *")
+        raw_by_name[name] = new
+        fixed = True
+    return fixed
 
 
 _KNOWN_FRAGMENT_HASHES = {
@@ -248,15 +276,28 @@ _KNOWN_FRAGMENT_HASHES = {
     "shaders/workshop/3681571511/effects/fxaa.frag": "4aaa800c637f76ffd512963294d723086cd4e6e04dfcc35d038b8de794192608",
     "shaders/workshop/2844906964/effects/test_shader.frag": "683530058ca911911d5702699d9ad4f0a8cee7b4cb74f4ff953301f8bdbf0114",
     "shaders/workshop/3577773857/effects/sine_wave.frag": "f7c6acf28a9b8dacb938e9a94295dadb0e2b7faaa648ce49b7b53a9a496da486",
+    "shaders/workshop/2799421411/effects/audio_responsive_oscilloscope.frag": "9acf31d49580b8b73d188bebe677a76921268c33230b2a9b5492ef437df976e7",
 }
 
 
 def _fix_known_fragment_shaders(raw_by_name):
     """Adapta únicamente las versiones diagnosticadas, sin alterar otros shaders."""
     fixed = []
-    for name, digest in _KNOWN_FRAGMENT_HASHES.items():
-        raw = raw_by_name.get(name)
-        if raw is None or hashlib.sha256(raw).hexdigest() != digest:
+    # Las mismas versiones aparecen bajo IDs distintos del efecto en Workshop.
+    # Exigir nombre de recurso y hash permite reutilizarlas sin depender del fondo.
+    accepted = {}
+    for path, digest in _KNOWN_FRAGMENT_HASHES.items():
+        accepted.setdefault(path.rsplit("/", 1)[-1], set()).add(digest)
+    accepted.setdefault("Simple_Audio_Bars.frag", set()).update({
+        "8993311eeb3ea2d5be6665b0947351859a2ba5e102a8db4a870d30d12d9fc9ef",
+        "4fb5eed2c8bf8abbdd29403cc82bb743c5350a9d37ffec48ad2b8c7edd8b7278",
+    })
+    accepted.setdefault("sine_wave.frag", set()).add(
+        "a4e8822e605698745ce06f4d014d4dd1a589af8cc76317f44ed1f4bb07071d5f")
+    for name, raw in list(raw_by_name.items()):
+        if not re.fullmatch(r"shaders/workshop/\d+/effects/[^/]+\.frag", name):
+            continue
+        if hashlib.sha256(raw).hexdigest() not in accepted.get(name.rsplit("/", 1)[-1], set()):
             continue
         if name.endswith(("Simple_Audio_Bars.frag", "sine_wave.frag")):
             # También las funciones auxiliares transforman coordenadas: usan una
@@ -272,6 +313,15 @@ def _fix_known_fragment_shaders(raw_by_name):
         elif name.endswith("fxaa.frag"):
             # z/w siguen almacenando el tamaño del texel; solo xy es la posición UV.
             new = re.sub(rb"\bv_TexCoord(\s*[-+])", rb"v_TexCoord.xy\1", raw)
+        elif name.endswith("audio_responsive_oscilloscope.frag"):
+            assignments = []
+            def defer_uniform_constant(match):
+                kind, variable, expression = match.groups()
+                assignments.append(variable + b" = " + expression + b";")
+                return kind + b" " + variable + b";"
+            new = re.sub(rb"const (vec2|float) (userBalance|lowBalanceMultipier) = ([^;]+);",
+                         defer_uniform_constant, raw)
+            new = new.replace(b"void main() {", b"void main() {\r\n    " + b"\r\n    ".join(assignments), 1)
         else:
             new = raw.replace(b"vec2 fragPos = v_TexCoord;", b"vec2 fragPos = v_TexCoord.xy;")
         if new != raw:
@@ -406,8 +456,9 @@ def _attempt_repair_locked(wid, fix_project=True):
     xray_fixed = _fix_broken_xray_shader(raw_by_name)
     audio_bars_fixed = _fix_audio_bars_shader(raw_by_name)
     fragments_fixed = _fix_known_fragment_shaders(raw_by_name)
+    iris_fixed = _fix_iris_movement_shader(raw_by_name)
 
-    if not fixed and not injected and not xray_fixed and not audio_bars_fixed and not fragments_fixed:
+    if not fixed and not injected and not xray_fixed and not audio_bars_fixed and not fragments_fixed and not iris_fixed:
         if parts:
             return True, f"Reparado: {'; '.join(parts)} (backup en project.json.bak_original)."
         return False, "No se encontro ninguna incompatibilidad conocida en este wallpaper."
@@ -428,6 +479,8 @@ def _attempt_repair_locked(wid, fix_project=True):
         parts.append(f"{fixed} campo(s) 'padding' corregidos")
     if injected:
         parts.append(f"efectos anadidos: {', '.join(injected)}")
+    if iris_fixed:
+        parts.append("shader de movimiento de ojos corregido")
     if fragments_fixed:
         parts.append(f"shaders de fragmento corregidos: {', '.join(fragments_fixed)}")
     if audio_bars_fixed:

@@ -1,0 +1,2649 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-5cgsngjm/library/3151551777
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Unknown object type found: {"id":977,"name":"Transform-BIRDS-day=sun","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"birds","value":true}}
+Unknown object type found: {"id":1427,"name":"Transform-BIRDS-Night","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"birds2","value":false}}
+Unknown object type found: {"id":15684,"name":"Transform-SAKURA","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals","value":false}}
+Unknown object type found: {"id":7857,"name":"Transform-SAKURA-NIGHT","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals2","value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":15967,"name":"Transform-SAKURA","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals","value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":7945,"name":"Transform-SAKURA-NIGHT","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals2","value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":10930,"name":"MEDIA LEFT","origin":{"script":"'use strict';\n\nexport var scriptProperties = createScriptProperties()\n    .addSlider({\n        name: 'posX',\n        label: 'Position X',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posY',\n        label: 'Position Y',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posZ',\n        label: 'Position Z',\n        value: 0,\n        min: 0,\n        max: 100,\n        integer: false\n    })\n    .finish();\n\nexport function update(value) {\n    value.x = scriptProperties.posX;\n    value.y = scriptProperties.posY;\n    value.z = scriptProperties.posZ;\n    return value;\n}","scriptproperties":{"posX":{"user":"mediaintegrationxposition","value":50},"posY":{"user":"mediaintegrationyposition","value":50},"posZ":0},"value":"3350.00000 256.00000 0.00000"},"visible":{"user":{"condition":"2","name":"mediaintegration"},"value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":10503,"name":"MEDIA RIGHT","origin":{"script":"'use strict';\n\nexport var scriptProperties = createScriptProperties()\n    .addSlider({\n        name: 'posX',\n        label: 'Position X',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posY',\n        label: 'Position Y',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posZ',\n        label: 'Position Z',\n        value: 0,\n        min: 0,\n        max: 100,\n        integer: false\n    })\n    .finish();\n\nexport function update(value) {\n    value.x = scriptProperties.posX;\n    value.y = scriptProperties.posY;\n    value.z = scriptProperties.posZ;\n    return value;\n}","scriptproperties":{"posX":{"user":"mediaintegrationxposition","value":50},"posY":{"user":"mediaintegrationyposition","value":50},"posZ":0},"value":"3350.00000 256.00000 0.00000"},"visible":{"user":{"condition":"1","name":"mediaintegration"},"value":true}}
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+0:79(30): warning: `param_9' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationForward;
+uniform vec4 g_RenderVar1;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+
+in vec2 a_TexCoordC2;
+in vec4 a_TexCoordVec4;
+in vec3 a_Position;
+out vec4 v_TexCoord;
+in vec4 a_TexCoordVec4C1;
+out float v_TexCoordBlend;
+out vec4 v_Color;
+in vec4 a_Color;
+
+void ComputeParticleTangents(vec3 rotation, out vec3 right, out vec3 up)
+{
+    vec3 rCos = cos(rotation);
+    vec3 rSin = sin(rotation);
+    mat3 mRotation = mat3(vec3(rCos.y, 0.0, rSin.y), vec3(0.0, 1.0, 0.0), vec3(-rSin.y, 0.0, rCos.y)) * (mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, rCos.x, -rSin.x), vec3(0.0, rSin.x, rCos.x)) * mat3(vec3(rCos.z, -rSin.z, 0.0), vec3(rSin.z, rCos.z, 0.0), vec3(0.0, 0.0, 1.0)));
+    mRotation = mat3(vec3(g_OrientationRight), vec3(g_OrientationUp), vec3(g_OrientationForward)) * mRotation;
+    right = mRotation * vec3(1.0, 0.0, 0.0);
+    up = mRotation * vec3(0.0, 1.0, 0.0);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeSpriteFrame(float lifetime, inout vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+    float numFrames = g_RenderVar1.z;
+    float frameWidth = g_RenderVar1.x;
+    float frameHeight = g_RenderVar1.y;
+    float currentFrame = floor(lifetime * numFrames);
+    float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+    uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+    uvs.x = fract(currentFrame * frameWidth);
+    uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+    uvs.z = fract(nextFrame * frameWidth);
+    frameBlend = fract(lifetime * numFrames);
+    uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void main()
+{
+    float textureRatio = g_RenderVar1.w;
+    vec3 param = vec3(a_TexCoordC2, a_TexCoordVec4.z);
+    vec3 param_1;
+    vec3 param_2;
+    ComputeParticleTangents(param, param_1, param_2);
+    vec3 right = param_1;
+    vec3 up = param_2;
+    vec2 param_3 = a_TexCoordVec4.xy;
+    float param_4 = textureRatio;
+    vec4 param_5 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_6 = right;
+    vec3 param_7 = up;
+    vec3 position = ComputeParticlePosition(param_3, param_4, param_5, param_6, param_7);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    float param_8 = fract(a_TexCoordVec4C1.w);
+    vec4 param_9;
+    vec2 param_10;
+    float param_11;
+    ComputeSpriteFrame(param_8, param_9, param_10, param_11);
+    v_TexCoord = param_9;
+    vec2 uvOffsets = param_10;
+    v_TexCoordBlend = param_11;
+    uvOffsets *= step(vec2(0.001000000047497451305389404296875), a_TexCoordVec4.xy);
+    v_TexCoord += uvOffsets.xyxy;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define SPRITESHEET 1
+#define THICKFORMAT 1
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define REFRACT 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Unknown object type, creating placeholder, empty object: 977
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 1427
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+0:79(30): warning: `param_9' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationForward;
+uniform vec4 g_RenderVar1;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+
+in vec2 a_TexCoordC2;
+in vec4 a_TexCoordVec4;
+in vec3 a_Position;
+out vec4 v_TexCoord;
+in vec4 a_TexCoordVec4C1;
+out float v_TexCoordBlend;
+out vec4 v_Color;
+in vec4 a_Color;
+
+void ComputeParticleTangents(vec3 rotation, out vec3 right, out vec3 up)
+{
+    vec3 rCos = cos(rotation);
+    vec3 rSin = sin(rotation);
+    mat3 mRotation = mat3(vec3(rCos.y, 0.0, rSin.y), vec3(0.0, 1.0, 0.0), vec3(-rSin.y, 0.0, rCos.y)) * (mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, rCos.x, -rSin.x), vec3(0.0, rSin.x, rCos.x)) * mat3(vec3(rCos.z, -rSin.z, 0.0), vec3(rSin.z, rCos.z, 0.0), vec3(0.0, 0.0, 1.0)));
+    mRotation = mat3(vec3(g_OrientationRight), vec3(g_OrientationUp), vec3(g_OrientationForward)) * mRotation;
+    right = mRotation * vec3(1.0, 0.0, 0.0);
+    up = mRotation * vec3(0.0, 1.0, 0.0);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeSpriteFrame(float lifetime, inout vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+    float numFrames = g_RenderVar1.z;
+    float frameWidth = g_RenderVar1.x;
+    float frameHeight = g_RenderVar1.y;
+    float currentFrame = floor(lifetime * numFrames);
+    float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+    uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+    uvs.x = fract(currentFrame * frameWidth);
+    uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+    uvs.z = fract(nextFrame * frameWidth);
+    frameBlend = fract(lifetime * numFrames);
+    uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void main()
+{
+    float textureRatio = g_RenderVar1.w;
+    vec3 param = vec3(a_TexCoordC2, a_TexCoordVec4.z);
+    vec3 param_1;
+    vec3 param_2;
+    ComputeParticleTangents(param, param_1, param_2);
+    vec3 right = param_1;
+    vec3 up = param_2;
+    vec2 param_3 = a_TexCoordVec4.xy;
+    float param_4 = textureRatio;
+    vec4 param_5 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_6 = right;
+    vec3 param_7 = up;
+    vec3 position = ComputeParticlePosition(param_3, param_4, param_5, param_6, param_7);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    float param_8 = fract(a_TexCoordVec4C1.w);
+    vec4 param_9;
+    vec2 param_10;
+    float param_11;
+    ComputeSpriteFrame(param_8, param_9, param_10, param_11);
+    v_TexCoord = param_9;
+    vec2 uvOffsets = param_10;
+    v_TexCoordBlend = param_11;
+    uvOffsets *= step(vec2(0.001000000047497451305389404296875), a_TexCoordVec4.xy);
+    v_TexCoord += uvOffsets.xyxy;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define SPRITESHEET 1
+#define THICKFORMAT 1
+#define TEX0FORMAT 8
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define REFRACT 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 15684
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 7857
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 15967
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 7945
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+0:48(47): warning: `param_2' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec4 g_RenderVar1;
+
+in vec3 a_Position;
+in vec4 a_TexCoordVec4C1;
+in vec4 a_TexCoordVec4;
+out vec4 v_TexCoord;
+out vec4 v_Color;
+in vec4 a_Color;
+in vec2 a_TexCoordC2;
+
+void ComputeParticleTrailTangents(vec3 localPosition, inout vec3 localVelocity, inout vec3 right, out vec3 up)
+{
+    vec3 eyeDirection = localPosition - (g_ModelMatrixInverse * vec4(g_EyePosition, 1.0)).xyz;
+    right = cross(eyeDirection, localVelocity);
+    right = normalize(right);
+    float trailLength = length(localVelocity);
+    localVelocity /= vec3(trailLength);
+    up = localVelocity * max(min(trailLength * g_RenderVar0.x, g_RenderVar0.y), g_RenderVar0.z);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void main()
+{
+    float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+    vec3 param = a_Position;
+    vec3 param_1 = a_TexCoordVec4C1.xyz;
+    vec3 param_2;
+    vec3 param_3;
+    ComputeParticleTrailTangents(param, param_1, param_2, param_3);
+    vec3 right = param_2;
+    vec3 up = param_3;
+    vec2 param_4 = a_TexCoordVec4.xy;
+    float param_5 = textureRatio;
+    vec4 param_6 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_7 = right;
+    vec3 param_8 = up;
+    vec3 position = ComputeParticlePosition(param_4, param_5, param_6, param_7, param_8);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define THICKFORMAT 1
+#define TRAILRENDERER 1
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define REFRACT 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+0:96(30): warning: `param_9' used uninitialized
+0:108(74): warning: `param_16' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationForward;
+uniform vec4 g_RenderVar1;
+uniform vec3 g_ViewRight;
+uniform vec3 g_ViewUp;
+uniform float g_RefractAmount;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+
+in vec2 a_TexCoordC2;
+in vec4 a_TexCoordVec4;
+in vec3 a_Position;
+out vec4 v_TexCoord;
+in vec4 a_TexCoordVec4C1;
+out float v_TexCoordBlend;
+out vec4 v_Color;
+in vec4 a_Color;
+out vec3 v_ScreenCoord;
+out vec4 v_ScreenTangents;
+
+void ComputeParticleTangents(vec3 rotation, out vec3 right, out vec3 up)
+{
+    vec3 rCos = cos(rotation);
+    vec3 rSin = sin(rotation);
+    mat3 mRotation = mat3(vec3(rCos.y, 0.0, rSin.y), vec3(0.0, 1.0, 0.0), vec3(-rSin.y, 0.0, rCos.y)) * (mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, rCos.x, -rSin.x), vec3(0.0, rSin.x, rCos.x)) * mat3(vec3(rCos.z, -rSin.z, 0.0), vec3(rSin.z, rCos.z, 0.0), vec3(0.0, 0.0, 1.0)));
+    mRotation = mat3(vec3(g_OrientationRight), vec3(g_OrientationUp), vec3(g_OrientationForward)) * mRotation;
+    right = mRotation * vec3(1.0, 0.0, 0.0);
+    up = mRotation * vec3(0.0, 1.0, 0.0);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeSpriteFrame(float lifetime, inout vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+    float numFrames = g_RenderVar1.z;
+    float frameWidth = g_RenderVar1.x;
+    float frameHeight = g_RenderVar1.y;
+    float currentFrame = floor(lifetime * numFrames);
+    float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+    uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+    uvs.x = fract(currentFrame * frameWidth);
+    uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+    uvs.z = fract(nextFrame * frameWidth);
+    frameBlend = fract(lifetime * numFrames);
+    uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(vec3 projectedPositionXYW, inout vec3 right, inout vec3 up, out vec3 v_ScreenCoord_1, inout vec4 v_ScreenTangents_1)
+{
+    v_ScreenCoord_1 = projectedPositionXYW;
+    right = normalize(right);
+    up = normalize(up);
+    vec2 _219 = vec2(dot(right, g_ViewRight), dot(up, g_ViewRight));
+    v_ScreenTangents_1.x = _219.x;
+    v_ScreenTangents_1.y = _219.y;
+    vec2 _231 = vec2(dot(right, g_ViewUp), dot(up, g_ViewUp));
+    v_ScreenTangents_1.z = _231.x;
+    v_ScreenTangents_1.w = _231.y;
+    v_ScreenTangents_1 *= vec4(g_RefractAmount);
+}
+
+void main()
+{
+    float textureRatio = g_RenderVar1.w;
+    vec3 param = vec3(a_TexCoordC2, a_TexCoordVec4.z);
+    vec3 param_1;
+    vec3 param_2;
+    ComputeParticleTangents(param, param_1, param_2);
+    vec3 right = param_1;
+    vec3 up = param_2;
+    vec2 param_3 = a_TexCoordVec4.xy;
+    float param_4 = textureRatio;
+    vec4 param_5 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_6 = right;
+    vec3 param_7 = up;
+    vec3 position = ComputeParticlePosition(param_3, param_4, param_5, param_6, param_7);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    float param_8 = fract(a_TexCoordVec4C1.w);
+    vec4 param_9;
+    vec2 param_10;
+    float param_11;
+    ComputeSpriteFrame(param_8, param_9, param_10, param_11);
+    v_TexCoord = param_9;
+    vec2 uvOffsets = param_10;
+    v_TexCoordBlend = param_11;
+    uvOffsets *= step(vec2(0.001000000047497451305389404296875), a_TexCoordVec4.xy);
+    v_TexCoord += uvOffsets.xyxy;
+    v_Color = a_Color;
+    vec3 param_12 = gl_Position.xyw;
+    vec3 param_13 = right;
+    vec3 param_14 = up;
+    vec3 param_15;
+    vec4 param_16;
+    ComputeScreenRefractionTangents(param_12, param_13, param_14, param_15, param_16);
+    v_ScreenCoord = param_15;
+    v_ScreenTangents = param_16;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define SPRITESHEET 1
+#define THICKFORMAT 1
+#define REFRACT 1
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define NORMALMAP 1
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+0:65(47): warning: `param_2' used uninitialized
+0:83(73): warning: `param_13' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec3 g_ViewRight;
+uniform vec3 g_ViewUp;
+uniform float g_RefractAmount;
+uniform vec4 g_Texture0Resolution;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+uniform vec4 g_RenderVar1;
+
+in vec3 a_Position;
+in vec4 a_TexCoordVec4C1;
+in vec4 a_TexCoordVec4;
+out vec4 v_TexCoord;
+out vec4 v_Color;
+in vec4 a_Color;
+out vec3 v_ScreenCoord;
+out vec4 v_ScreenTangents;
+in vec2 a_TexCoordC2;
+
+void ComputeParticleTrailTangents(vec3 localPosition, inout vec3 localVelocity, inout vec3 right, out vec3 up)
+{
+    vec3 eyeDirection = localPosition - (g_ModelMatrixInverse * vec4(g_EyePosition, 1.0)).xyz;
+    right = cross(eyeDirection, localVelocity);
+    right = normalize(right);
+    float trailLength = length(localVelocity);
+    localVelocity /= vec3(trailLength);
+    up = localVelocity * max(min(trailLength * g_RenderVar0.x, g_RenderVar0.y), g_RenderVar0.z);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeScreenRefractionTangents(vec3 projectedPositionXYW, inout vec3 right, inout vec3 up, out vec3 v_ScreenCoord_1, inout vec4 v_ScreenTangents_1)
+{
+    v_ScreenCoord_1 = projectedPositionXYW;
+    right = normalize(right);
+    up = normalize(up);
+    vec2 _123 = vec2(dot(right, g_ViewRight), dot(up, g_ViewRight));
+    v_ScreenTangents_1.x = _123.x;
+    v_ScreenTangents_1.y = _123.y;
+    vec2 _135 = vec2(dot(right, g_ViewUp), dot(up, g_ViewUp));
+    v_ScreenTangents_1.z = _135.x;
+    v_ScreenTangents_1.w = _135.y;
+    v_ScreenTangents_1 *= vec4(g_RefractAmount);
+}
+
+void main()
+{
+    float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+    vec3 param = a_Position;
+    vec3 param_1 = a_TexCoordVec4C1.xyz;
+    vec3 param_2;
+    vec3 param_3;
+    ComputeParticleTrailTangents(param, param_1, param_2, param_3);
+    vec3 right = param_2;
+    vec3 up = param_3;
+    vec2 param_4 = a_TexCoordVec4.xy;
+    float param_5 = textureRatio;
+    vec4 param_6 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_7 = right;
+    vec3 param_8 = up;
+    vec3 position = ComputeParticlePosition(param_4, param_5, param_6, param_7, param_8);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    v_Color = a_Color;
+    vec3 param_9 = gl_Position.xyw;
+    vec3 param_10 = right;
+    vec3 param_11 = up;
+    vec3 param_12;
+    vec4 param_13;
+    ComputeScreenRefractionTangents(param_9, param_10, param_11, param_12, param_13);
+    v_ScreenCoord = param_12;
+    v_ScreenTangents = param_13;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define THICKFORMAT 1
+#define TRAILRENDERER 1
+#define REFRACT 1
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define NORMALMAP 1
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+0:82(72): warning: `param_12' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationForward;
+uniform vec3 g_ViewRight;
+uniform vec3 g_ViewUp;
+uniform float g_RefractAmount;
+uniform vec4 g_Texture0Resolution;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+
+in vec2 a_TexCoordC2;
+in vec4 a_TexCoordVec4;
+in vec3 a_Position;
+out vec4 v_TexCoord;
+out vec4 v_Color;
+in vec4 a_Color;
+out vec3 v_ScreenCoord;
+out vec4 v_ScreenTangents;
+in vec4 a_TexCoordVec4C1;
+
+void ComputeParticleTangents(vec3 rotation, out vec3 right, out vec3 up)
+{
+    vec3 rCos = cos(rotation);
+    vec3 rSin = sin(rotation);
+    mat3 mRotation = mat3(vec3(rCos.y, 0.0, rSin.y), vec3(0.0, 1.0, 0.0), vec3(-rSin.y, 0.0, rCos.y)) * (mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, rCos.x, -rSin.x), vec3(0.0, rSin.x, rCos.x)) * mat3(vec3(rCos.z, -rSin.z, 0.0), vec3(rSin.z, rCos.z, 0.0), vec3(0.0, 0.0, 1.0)));
+    mRotation = mat3(vec3(g_OrientationRight), vec3(g_OrientationUp), vec3(g_OrientationForward)) * mRotation;
+    right = mRotation * vec3(1.0, 0.0, 0.0);
+    up = mRotation * vec3(0.0, 1.0, 0.0);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeScreenRefractionTangents(vec3 projectedPositionXYW, inout vec3 right, inout vec3 up, out vec3 v_ScreenCoord_1, inout vec4 v_ScreenTangents_1)
+{
+    v_ScreenCoord_1 = projectedPositionXYW;
+    right = normalize(right);
+    up = normalize(up);
+    vec2 _158 = vec2(dot(right, g_ViewRight), dot(up, g_ViewRight));
+    v_ScreenTangents_1.x = _158.x;
+    v_ScreenTangents_1.y = _158.y;
+    vec2 _170 = vec2(dot(right, g_ViewUp), dot(up, g_ViewUp));
+    v_ScreenTangents_1.z = _170.x;
+    v_ScreenTangents_1.w = _170.y;
+    v_ScreenTangents_1 *= vec4(g_RefractAmount);
+}
+
+void main()
+{
+    float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+    vec3 param = vec3(a_TexCoordC2, a_TexCoordVec4.z);
+    vec3 param_1;
+    vec3 param_2;
+    ComputeParticleTangents(param, param_1, param_2);
+    vec3 right = param_1;
+    vec3 up = param_2;
+    vec2 param_3 = a_TexCoordVec4.xy;
+    float param_4 = textureRatio;
+    vec4 param_5 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_6 = right;
+    vec3 param_7 = up;
+    vec3 position = ComputeParticlePosition(param_3, param_4, param_5, param_6, param_7);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    v_Color = a_Color;
+    vec3 param_8 = gl_Position.xyw;
+    vec3 param_9 = right;
+    vec3 param_10 = up;
+    vec3 param_11;
+    vec4 param_12;
+    ComputeScreenRefractionTangents(param_8, param_9, param_10, param_11, param_12);
+    v_ScreenCoord = param_11;
+    v_ScreenTangents = param_12;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define THICKFORMAT 1
+#define REFRACT 1
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+#define NORMALMAP 1
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Replaced "workshop/2084198056/effects/Simple_Audio_Bars.vert" with compat "zcompat/scene/shaders/2084198056/Simple_Audio_Bars.vert"
+Replaced "workshop/2084198056/effects/Simple_Audio_Bars.frag" with compat "zcompat/scene/shaders/2084198056/Simple_Audio_Bars.frag"
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericparticle
+0:79(30): warning: `param_9' used uninitialized
+
+Compiled source code:
+#version 330
+#ifdef GL_ARB_shading_language_420pack
+#extension GL_ARB_shading_language_420pack : require
+#endif
+
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationForward;
+uniform vec4 g_RenderVar1;
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+uniform vec4 g_RenderVar0;
+uniform vec4 g_Texture0Resolution;
+
+in vec2 a_TexCoordC2;
+in vec4 a_TexCoordVec4;
+in vec3 a_Position;
+out vec4 v_TexCoord;
+in vec4 a_TexCoordVec4C1;
+out float v_TexCoordBlend;
+out vec4 v_Color;
+in vec4 a_Color;
+
+void ComputeParticleTangents(vec3 rotation, out vec3 right, out vec3 up)
+{
+    vec3 rCos = cos(rotation);
+    vec3 rSin = sin(rotation);
+    mat3 mRotation = mat3(vec3(rCos.y, 0.0, rSin.y), vec3(0.0, 1.0, 0.0), vec3(-rSin.y, 0.0, rCos.y)) * (mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, rCos.x, -rSin.x), vec3(0.0, rSin.x, rCos.x)) * mat3(vec3(rCos.z, -rSin.z, 0.0), vec3(rSin.z, rCos.z, 0.0), vec3(0.0, 0.0, 1.0)));
+    mRotation = mat3(vec3(g_OrientationRight), vec3(g_OrientationUp), vec3(g_OrientationForward)) * mRotation;
+    right = mRotation * vec3(1.0, 0.0, 0.0);
+    up = mRotation * vec3(0.0, 1.0, 0.0);
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+    return positionAndSize.xyz + (((right * positionAndSize.w) * (uvs.x - 0.5)) - (((up * positionAndSize.w) * (uvs.y - 0.5)) * textureRatio));
+}
+
+void ComputeSpriteFrame(float lifetime, inout vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+    float numFrames = g_RenderVar1.z;
+    float frameWidth = g_RenderVar1.x;
+    float frameHeight = g_RenderVar1.y;
+    float currentFrame = floor(lifetime * numFrames);
+    float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+    uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+    uvs.x = fract(currentFrame * frameWidth);
+    uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+    uvs.z = fract(nextFrame * frameWidth);
+    frameBlend = fract(lifetime * numFrames);
+    uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void main()
+{
+    float textureRatio = g_RenderVar1.w;
+    vec3 param = vec3(a_TexCoordC2, a_TexCoordVec4.z);
+    vec3 param_1;
+    vec3 param_2;
+    ComputeParticleTangents(param, param_1, param_2);
+    vec3 right = param_1;
+    vec3 up = param_2;
+    vec2 param_3 = a_TexCoordVec4.xy;
+    float param_4 = textureRatio;
+    vec4 param_5 = vec4(a_Position, a_TexCoordVec4.w);
+    vec3 param_6 = right;
+    vec3 param_7 = up;
+    vec3 position = ComputeParticlePosition(param_3, param_4, param_5, param_6, param_7);
+    gl_Position = g_ModelViewProjectionMatrix * vec4(position, 1.0);
+    v_TexCoord.x = a_TexCoordVec4.xy.x;
+    v_TexCoord.y = a_TexCoordVec4.xy.y;
+    float param_8 = fract(a_TexCoordVec4C1.w);
+    vec4 param_9;
+    vec2 param_10;
+    float param_11;
+    ComputeSpriteFrame(param_8, param_9, param_10, param_11);
+    v_TexCoord = param_9;
+    vec2 uvOffsets = param_10;
+    v_TexCoordBlend = param_11;
+    uvOffsets *= step(vec2(0.001000000047497451305389404296875), a_TexCoordVec4.xy);
+    v_TexCoord += uvOffsets.xyxy;
+    v_Color = a_Color;
+}
+
+#if 0
+#version 330
+// ======================================================
+// Processed shader genericparticle
+// ======================================================
+precision highp float;
+#define mul(x, y) ((y) * (x))
+#define max(x, y) max (y, x)
+#define lerp mix
+#define frac fract
+#define CAST2(x) (vec2(x))
+#define CAST3(x) (vec3(x))
+#define CAST4(x) (vec4(x))
+#define CAST3X3(x) (mat3(x))
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+#define saturate(x) (clamp(x, 0.0, 1.0))
+#define texSample2D texture
+#define texSample2DLod textureLod
+#define log10(x) (log2(x) * 0.301029995663981)
+#define atan2 atan
+#define fmod(x, y) ((x)-(y)*trunc((x)/(y)))
+#define ddx dFdx
+#define ddy(x) dFdy(-(x))
+#define GLSL 1
+
+#define attribute in
+#define varying out
+#define SPRITESHEET 1
+#define THICKFORMAT 1
+#define REFRACT 0
+#define CUTOUT 0
+#define DOUBLESIDEDLIGHTING 0
+#define FOG 1
+#define LIGHTING 0
+
+//nclude "common_particles.h"
+
+// Declare dynamic attributes for all combinations
+attribute vec3 a_Position;
+attribute vec4 a_TexCoordVec4;
+attribute vec4 a_Color;
+varying vec4 v_Color;
+
+#if THICKFORMAT
+attribute vec4 a_TexCoordVec4C1;
+#endif
+
+// begin of include from file common_particles.h
+
+uniform mat4 g_ModelViewProjectionMatrix;
+uniform mat4 g_ModelMatrixInverse;
+
+uniform vec3 g_OrientationUp;
+uniform vec3 g_OrientationRight;
+uniform vec3 g_OrientationForward;
+
+uniform vec3 g_ViewUp;
+uniform vec3 g_ViewRight;
+uniform vec3 g_EyePosition;
+
+uniform vec4 g_RenderVar0;
+uniform vec4 g_RenderVar1;
+uniform vec4 g_Texture0Resolution;
+
+#if REFRACT
+uniform float g_RefractAmount; // {"material":"ui_editor_properties_refract_amount","default":0.05,"range":[-1,1]}
+#endif
+
+void ComputeParticleTangents(in vec3 rotation, out vec3 right, out vec3 up)
+{
+	vec3 rCos = cos(rotation);
+	vec3 rSin = sin(rotation);
+	// Apply particle rotation
+	mat3 mRotation = mul(mul(
+				mat3(rCos.z, -rSin.z, 0,
+					rSin.z, rCos.z, 0,
+					0, 0, 1),
+				mat3(1, 0, 0,
+					0, rCos.x, -rSin.x,
+					0, rSin.x, rCos.x)),
+				mat3(rCos.y, 0, rSin.y,
+					0, 1, 0,
+					-rSin.y, 0, rCos.y));
+	// Apply screen orientation
+	mRotation = mul(mRotation, mat3(g_OrientationRight, g_OrientationUp, g_OrientationForward));
+	right = mul(vec3(1, 0, 0), mRotation);
+	up = mul(vec3(0, 1, 0), mRotation);
+}
+
+void ComputeParticleTrailTangents(vec3 localPosition, vec3 localVelocity, out vec3 right, out vec3 up)
+{
+	//vec3 eyeDirection = mul(g_OrientationForward, CAST3X3(g_ModelMatrixInverse));
+	vec3 eyeDirection = localPosition - mul(vec4(g_EyePosition, 1.0), g_ModelMatrixInverse).xyz;
+	right = cross(eyeDirection, localVelocity);
+
+	right = normalize(right);
+	float trailLength = length(localVelocity);
+	localVelocity /= trailLength;
+	up = localVelocity * max(g_RenderVar0.z, min(trailLength * g_RenderVar0.x, g_RenderVar0.y));
+}
+
+vec3 ComputeParticlePosition(vec2 uvs, float textureRatio, vec4 positionAndSize, vec3 right, vec3 up)
+{
+	return positionAndSize.xyz +
+		(positionAndSize.w * right * (uvs.x-0.5) -
+		positionAndSize.w * up * (uvs.y-0.5) * textureRatio);
+}
+
+void ComputeSpriteFrame(float lifetime, out vec4 uvs, out vec2 uvFrameSize, out float frameBlend)
+{
+	float numFrames = g_RenderVar1.z;
+	float frameWidth = g_RenderVar1.x;
+	float frameHeight = g_RenderVar1.y;
+
+	float currentFrame = floor(lifetime * numFrames);
+	float nextFrame = min(numFrames - 1.0, currentFrame + 1.0);
+
+#if SPRITESHEETBLENDNPOT
+	float unpaddedWidth = g_Texture0Resolution.z / g_Texture0Resolution.x;
+	float scaledFrameWidth = frameWidth / unpaddedWidth;
+	uvs.y = floor(currentFrame * scaledFrameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * scaledFrameWidth) * unpaddedWidth;
+	uvs.w = floor(nextFrame * scaledFrameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * scaledFrameWidth) * unpaddedWidth;
+#else
+	uvs.y = floor(currentFrame * frameWidth) * frameHeight;
+	uvs.x = frac(currentFrame * frameWidth);
+	uvs.w = floor(nextFrame * frameWidth) * frameHeight;
+	uvs.z = frac(nextFrame * frameWidth);
+#endif
+
+	frameBlend = frac(lifetime * numFrames);
+	uvFrameSize = vec2(frameWidth, frameHeight);
+}
+
+void ComputeScreenRefractionTangents(in vec3 projectedPositionXYW, in vec3 right, in vec3 up, out vec3 v_ScreenCoord, out vec4 v_ScreenTangents)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+
+	right = normalize(right);
+	up = normalize(up);
+
+	v_ScreenTangents.xy = vec2(dot(right, g_ViewRight),
+								dot(up, g_ViewRight));
+	v_ScreenTangents.zw = vec2(dot(right, g_ViewUp),
+								dot(up, g_ViewUp));
+
+#if REFRACT
+	v_ScreenTangents *= g_RefractAmount;
+#endif
+}
+
+void ComputeScreenRefractionCoord(in vec3 projectedPositionXYW, out vec3 v_ScreenCoord)
+{
+	v_ScreenCoord = projectedPositionXYW;
+#ifdef HLSL
+	v_ScreenCoord.y = -v_ScreenCoord.y;
+#endif
+}
+
+// end of included from file common_particles.h
+
+#if GS_ENABLED
+
+varying vec3 v_Rotation;
+
+#if THICKFORMAT
+varying vec4 v_VelocityLifetime;
+#endif // THICKFORMAT
+
+#else // No geometry shaders
+
+attribute vec2 a_TexCoordC2;
+
+#if SPRITESHEET
+varying vec4 v_TexCoord;
+varying float v_TexCoordBlend;
+#else
+varying vec4 v_TexCoord;
+#endif // SPRITESHEET
+
+#if REFRACT
+varying vec3 v_ScreenCoord;
+varying vec4 v_ScreenTangents;
+#endif // REFRACT
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+uniform mat4 g_ModelMatrix;
+varying vec4 v_ViewDir;
+#endif
+
+#if LIGHTING
+varying vec3 v_WorldPos;
+varying vec3 v_WorldRight;
+#endif
+
+#endif // GS_ENABLED
+
+void main() {
+
+	// Prepare input layout
+#if GS_ENABLED
+#define in_ParticleRotation (a_TexCoordVec4.xyz)
+#else
+#define in_ParticleRotation vec3(a_TexCoordC2.xy, a_TexCoordVec4.z)
+#endif
+
+#define in_ParticleSize (a_TexCoordVec4.w)
+#define in_ParticleVelocity (a_TexCoordVec4C1.xyz)
+#define in_ParticleLifeTime (a_TexCoordVec4C1.w)
+
+#if SPRITESHEET
+	float textureRatio = g_RenderVar1.w;
+#else
+	float textureRatio = g_Texture0Resolution.y / g_Texture0Resolution.x;
+#endif
+
+	// Prepare geometry shader input
+	// or compute final vertex position
+#if GS_ENABLED
+
+#if THICKFORMAT
+	v_VelocityLifetime = vec4(in_ParticleVelocity, frac(in_ParticleLifeTime));
+#endif
+	v_Rotation = in_ParticleRotation;
+	gl_Position = vec4(a_Position, in_ParticleSize);
+
+#else // No geometry shaders
+
+	vec3 right, up;
+#if TRAILRENDERER
+	ComputeParticleTrailTangents(a_Position, in_ParticleVelocity, right, up);
+#else
+	ComputeParticleTangents(in_ParticleRotation, right, up);
+#endif
+
+	vec3 position = ComputeParticlePosition(a_TexCoordVec4.xy, textureRatio, vec4(a_Position.xyz, in_ParticleSize), right, up);
+	gl_Position = mul(vec4(position, 1.0), g_ModelViewProjectionMatrix);
+
+	v_TexCoord.xy = a_TexCoordVec4.xy;
+#if SPRITESHEET
+	vec2 uvOffsets;
+	ComputeSpriteFrame(frac(in_ParticleLifeTime), v_TexCoord, uvOffsets, v_TexCoordBlend);
+	uvOffsets *= step(0.001, a_TexCoordVec4.xy);
+	v_TexCoord += uvOffsets.xyxy;
+#endif
+
+#if FOG_DIST || FOG_HEIGHT || LIGHTING
+	vec3 worldPos = mul(vec4(position, 1.0), g_ModelMatrix).xyz;
+	v_ViewDir.xyz = g_EyePosition - worldPos.xyz;
+	v_ViewDir.w = worldPos.y;
+#endif
+
+#if LIGHTING
+	v_WorldPos = worldPos;
+	v_WorldRight = mul(right, CAST3X3(g_ModelMatrix)).xyz;
+#endif
+
+#endif
+
+	v_Color = a_Color;
+
+#if GS_ENABLED
+#else
+#if REFRACT
+	ComputeScreenRefractionTangents(gl_Position.xyw, right, up, v_ScreenCoord, v_ScreenTangents);
+#endif
+#endif
+}
+
+#endif
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 10930
+Unknown object type, creating placeholder, empty object: 10503
+Stop requested by signal 15
+Stopping

@@ -1,0 +1,963 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-jvfs411y/library/3208556055
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+GLSL fragment unit parsing Failed: ERROR: 0:385: 'assign' :  l-value required "v_TexCoord" (can't modify shader input)
+ERROR: 0:385: '' : missing #endif
+ERROR: 0:385: '' : compilation terminated
+ERROR: 3 compilation errors.  No code generated.
+
+
+0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Failed to setup object 330: 0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Resolving require module: LightingV1 in shader genericimage4
+GLSL fragment unit parsing Failed: ERROR: 0:385: 'assign' :  l-value required "v_TexCoord" (can't modify shader input)
+ERROR: 0:385: '' : missing #endif
+ERROR: 0:385: '' : compilation terminated
+ERROR: 3 compilation errors.  No code generated.
+
+
+0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Failed to setup object 295: 0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Resolving require module: LightingV1 in shader genericimage4
+GLSL fragment unit parsing Failed: ERROR: 0:116: '=' : global const initializers must be constant ' const 2-component vector of float'
+ERROR: 0:116: '' : missing #endif
+ERROR: 2 compilation errors.  No code generated.
+
+
+0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Failed to setup object 203: 0:1(1): error: syntax error, unexpected end of file
+
+Compiled source code:
+
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined
+ScriptEngine [layer.update]: TypeError: not a function
+ScriptEngine [layer.update]: TypeError: not a function
+Stop requested by signal 15
+Stopping

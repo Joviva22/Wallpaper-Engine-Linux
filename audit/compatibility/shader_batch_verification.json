@@ -1,0 +1,228 @@
+{
+  "2407172811": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "2407172811_original.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "repair_message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "2407172811_repaired.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3151551777": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3151551777_original.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "repair_message": "Reparado: shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3151551777_repaired.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3208556055": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3208556055_original.log",
+      "shader_errors": [
+        "GLSL fragment unit parsing Failed: ERROR: 0:385: 'assign' :  l-value required \"v_TexCoord\" (can't modify shader input)",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 330: 0:1(1): error: syntax error, unexpected end of file",
+        "GLSL fragment unit parsing Failed: ERROR: 0:385: 'assign' :  l-value required \"v_TexCoord\" (can't modify shader input)",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 295: 0:1(1): error: syntax error, unexpected end of file",
+        "GLSL fragment unit parsing Failed: ERROR: 0:116: '=' : global const initializers must be constant ' const 2-component vector of float'",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 203: 0:1(1): error: syntax error, unexpected end of file"
+      ],
+      "diagnostics": [
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function"
+      ]
+    },
+    "repair_message": "Reparado: shaders de fragmento corregidos: sine_wave.frag, audio_responsive_oscilloscope.frag (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3208556055_repaired.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: ReferenceError: Vec3 is not defined",
+        "ScriptEngine [layer.update]: TypeError: not a function",
+        "ScriptEngine [layer.update]: TypeError: not a function"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3535044281": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3535044281_original.log",
+      "shader_errors": [
+        "GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 21: 0:1(1): error: syntax error, unexpected end of file"
+      ],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)",
+        "ERROR: 0:165: '' : missing #endif ",
+        "ERROR: 0:165: '' : compilation terminated ",
+        "ERROR: 3 compilation errors.  No code generated.",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 21: 0:1(1): error: syntax error, unexpected end of file"
+      ]
+    },
+    "repair_message": "Reparado: shader de movimiento de ojos corregido; shaders de fragmento corregidos: Simple_Audio_Bars.frag; shader de barras de audio corregido (#endif sobrante) (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3535044281_repaired.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  },
+  "3590434671": {
+    "original": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3590434671_original.log",
+      "shader_errors": [
+        "GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 17: 0:1(1): error: syntax error, unexpected end of file"
+      ],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position",
+        "GLSL vertex unit parsing Failed: ERROR: 0:165: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp 4-component vector of float' and a right operand of type ' uniform 2-component vector of float' (or there is no acceptable conversion)",
+        "ERROR: 0:165: '' : missing #endif ",
+        "ERROR: 0:165: '' : compilation terminated ",
+        "ERROR: 3 compilation errors.  No code generated.",
+        "0:1(1): error: syntax error, unexpected end of file",
+        "Failed to setup object 17: 0:1(1): error: syntax error, unexpected end of file"
+      ]
+    },
+    "repair_message": "Reparado: shader de movimiento de ojos corregido (backup en *.bak_original).",
+    "backup_verified": true,
+    "idempotent": true,
+    "repaired": {
+      "returncode": 0,
+      "running_at_timeout": true,
+      "log": "3590434671_repaired.log",
+      "shader_errors": [],
+      "diagnostics": [
+        "Failed to initialize GLEW: No GLX display",
+        "GLFW error 65548: Wayland: The platform does not support setting the window position"
+      ]
+    },
+    "original_unchanged": true
+  }
+}

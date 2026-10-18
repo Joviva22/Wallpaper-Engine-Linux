@@ -1,0 +1,62 @@
+Running with: ./linux-wallpaperengine --assets-dir /home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets --window 0x0x128x128 --fps 15 --silent /tmp/wpe-repairs-5cgsngjm/library/3151551777
+Using wallpaper engine's assets at "/home/joviva/.local/share/Steam/steamapps/common/wallpaper_engine/assets" based on --assets-dir parameter
+Unknown object type found: {"id":977,"name":"Transform-BIRDS-day=sun","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"birds","value":true}}
+Unknown object type found: {"id":1427,"name":"Transform-BIRDS-Night","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"birds2","value":false}}
+Unknown object type found: {"id":15684,"name":"Transform-SAKURA","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals","value":false}}
+Unknown object type found: {"id":7857,"name":"Transform-SAKURA-NIGHT","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals2","value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":15967,"name":"Transform-SAKURA","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals","value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":7945,"name":"Transform-SAKURA-NIGHT","origin":"1920.00000 1080.00000 0.00000","visible":{"user":"sakurapetals2","value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":10930,"name":"MEDIA LEFT","origin":{"script":"'use strict';\n\nexport var scriptProperties = createScriptProperties()\n    .addSlider({\n        name: 'posX',\n        label: 'Position X',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posY',\n        label: 'Position Y',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posZ',\n        label: 'Position Z',\n        value: 0,\n        min: 0,\n        max: 100,\n        integer: false\n    })\n    .finish();\n\nexport function update(value) {\n    value.x = scriptProperties.posX;\n    value.y = scriptProperties.posY;\n    value.z = scriptProperties.posZ;\n    return value;\n}","scriptproperties":{"posX":{"user":"mediaintegrationxposition","value":50},"posY":{"user":"mediaintegrationyposition","value":50},"posZ":0},"value":"3350.00000 256.00000 0.00000"},"visible":{"user":{"condition":"2","name":"mediaintegration"},"value":false}}
+Unknown object type found: {"angles":"0.00000 -0.00000 0.00000","id":10503,"name":"MEDIA RIGHT","origin":{"script":"'use strict';\n\nexport var scriptProperties = createScriptProperties()\n    .addSlider({\n        name: 'posX',\n        label: 'Position X',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posY',\n        label: 'Position Y',\n        value: 50,\n        min: 0,\n        max: 4000,\n        integer: true\n    })\n    .addSlider({\n        name: 'posZ',\n        label: 'Position Z',\n        value: 0,\n        min: 0,\n        max: 100,\n        integer: false\n    })\n    .finish();\n\nexport function update(value) {\n    value.x = scriptProperties.posX;\n    value.y = scriptProperties.posY;\n    value.z = scriptProperties.posZ;\n    return value;\n}","scriptproperties":{"posX":{"user":"mediaintegrationxposition","value":50},"posY":{"user":"mediaintegrationyposition","value":50},"posZ":0},"value":"3350.00000 256.00000 0.00000"},"visible":{"user":{"condition":"1","name":"mediaintegration"},"value":true}}
+Failed to initialize GLEW: No GLX display
+GLFW error 65548: Wayland: The platform does not support setting the window position
+Fullscreen detection not supported by your Wayland compositor
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 977
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 1427
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 15684
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 7857
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 15967
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 7945
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Replaced "workshop/2084198056/effects/Simple_Audio_Bars.vert" with compat "zcompat/scene/shaders/2084198056/Simple_Audio_Bars.vert"
+Replaced "workshop/2084198056/effects/Simple_Audio_Bars.frag" with compat "zcompat/scene/shaders/2084198056/Simple_Audio_Bars.frag"
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericimage4
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Resolving require module: LightingV1 in shader genericparticle
+Unknown object type, creating placeholder, empty object: 10930
+Unknown object type, creating placeholder, empty object: 10503
+Stop requested by signal 15
+Stopping
