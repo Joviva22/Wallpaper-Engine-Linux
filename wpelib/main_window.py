@@ -15,6 +15,7 @@ from gi.repository import Gtk, GdkPixbuf, GLib, Gdk, Pango
 
 from .config import (
     atomic_write_json, load_json, CONF_DIR,
+    web_wallpapers_allowed, set_web_wallpapers_allowed,
     load_wallpapers, detect_monitors, load_current_assignments, load_hidden_ids,
     save_hidden_ids, load_favorite_ids, save_favorite_ids, load_recent_ids, record_recent,
     load_known_bad, load_playlists, save_playlists, load_ui_state, save_ui_state,
@@ -445,6 +446,7 @@ class PickerWindow(Gtk.Window):
         add_action("Ocultar/Mostrar seleccionados", "list-remove-symbolic", self.on_toggle_hidden_clicked)
         add_action("Desuscribirse (seleccionados)", "user-trash-symbolic", self.on_unsubscribe_clicked)
         box.pack_start(Gtk.Separator(), False, False, 2)
+        add_action("Desactivar fondos web", "dialog-password-symbolic", self._disable_web_wallpapers)
         add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
         box.show_all()
         popover.add(box)
@@ -942,10 +944,44 @@ class PickerWindow(Gtk.Window):
 
     def _reapply_current(self, monitor):
         wid = self.assignments.get(monitor)
-        if wid:
+        if wid and self._allow_web_for(wid):
             subprocess.Popen([APPLY_SCRIPT, f"{monitor}={wid}"])
 
+    def _ask_web_permission(self):
+        dialog = Gtk.MessageDialog(
+            transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
+            text="¿Permitir wallpapers web?",
+        )
+        dialog.format_secondary_text(
+            "Los fondos web ejecutan HTML y JavaScript de terceros. "
+            "El aislamiento del motor puede ser limitado y no está verificado en esta instalación. "
+            "Permítelos solo si confías en su contenido. "
+            "Puedes volver a desactivarlos desde el menú de acciones."
+        )
+        dialog.add_buttons("Cancelar", Gtk.ResponseType.CANCEL,
+                           "Permitir wallpapers web", Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.CANCEL)
+        accepted = dialog.run() == Gtk.ResponseType.OK
+        dialog.destroy()
+        return accepted
+
+    def _allow_web_for(self, wid):
+        from .apply import project_type
+        if project_type(wid) != "web" or web_wallpapers_allowed():
+            return True
+        if not self._ask_web_permission():
+            self.status_label.set_text("Aplicación de fondo web cancelada.")
+            return False
+        set_web_wallpapers_allowed(True)
+        return True
+
+    def _disable_web_wallpapers(self, *_args):
+        set_web_wallpapers_allowed(False)
+        self.status_label.set_text("Fondos web desactivados para nuevas aplicaciones.")
+
     def assign_and_apply(self, wid, monitor=None):
+        if not self._allow_web_for(wid):
+            return
         monitor = monitor or self.target_monitor
         # Una asignacion manual desactiva cualquier rotacion activa en esa pantalla,
         # para que el demonio de rotacion no la sobrescriba mas tarde.
@@ -973,7 +1009,7 @@ class PickerWindow(Gtk.Window):
             for card_wid, card in self.cards.items():
                 card.set_badge(self._badge_for(card_wid))
             self._sync_speed_combo()
-            if state.get("state") == "failed":
+            if state.get("state") in ("failed", "blocked"):
                 title = self.items_by_id.get(wid, {}).get("title", wid)
                 self.status_label.set_text(f"No se pudo reproducir {title} en {monitor}: {state.get('detail', '')[:300]}")
             elif state.get("state") == "running":

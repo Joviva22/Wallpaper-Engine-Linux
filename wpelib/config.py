@@ -149,6 +149,19 @@ def load_json(path, default, convert=None):
 # Configuracion y deteccion de la biblioteca de Steam
 # ---------------------------------------------------------------------------
 
+def web_wallpapers_allowed():
+    """Consentimiento explícito y persistido; solo el booleano true lo habilita."""
+    return load_json(CONFIG_FILE, {}).get("allow_web") is True
+
+
+def set_web_wallpapers_allowed(allowed):
+    with FileLock(os.path.join(CONF_DIR, "config.lock")):
+        cfg = load_config()
+        cfg["allow_web"] = bool(allowed)
+        save_config(cfg)
+        CONFIG.update(cfg)
+
+
 def parse_libraryfolders(vdf_path):
     paths = []
     try:

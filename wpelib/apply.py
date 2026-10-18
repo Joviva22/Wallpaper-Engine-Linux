@@ -92,9 +92,28 @@ def speed_args(screen):
 
 
 def project_type(wid):
-    data = load_json(os.path.join(config.WORKSHOP_DIR, wid, "project.json"), {})
-    kind = data.get("type") if isinstance(data, dict) else None
-    return kind.lower() if isinstance(kind, str) else ""
+    from .classify import classify_project
+
+    def resolve(item):
+        folder = os.path.join(config.WORKSHOP_DIR, item)
+        if not os.path.isfile(os.path.join(folder, "project.json")):
+            return None
+        try:
+            return load_json(os.path.join(folder, "project.json"), {}), os.listdir(folder)
+        except OSError:
+            return None
+
+    project = resolve(wid)
+    if not project:
+        return ""
+    kind = classify_project(wid, project[0], project[1], resolve=resolve)['type'].lower()
+    return kind if kind in ("web", "video", "scene") else ""
+
+
+def web_block_reason(wid):
+    if project_type(wid) == "web" and not config.web_wallpapers_allowed():
+        return "Los fondos web están desactivados. Permítelos explícitamente desde Elegir Fondo antes de aplicarlos."
+    return ""
 
 
 def find_libcef():
@@ -288,6 +307,12 @@ def watch(screen, wid, proc, logfile, log_offset, allow_repair=True,
 
 def restart_screen(screen, wid, allow_repair=True, on_started=None, expected_pid=None):
     """Lanza el motor, confirma que permanece vivo y recoge su salida hasta el final."""
+    reason = web_block_reason(wid)
+    if reason:
+        write_status(screen, wid, "blocked", reason)
+        if on_started:
+            on_started(False, reason)
+        return
     logfile = log_file(screen)
     with _Lock(_path(f"lock_{screen}.lock")):
         if expected_pid is not None and _read_pid(pid_file(screen)) != expected_pid:
@@ -410,6 +435,12 @@ def main(argv=None):
     if error:
         print(error, file=sys.stderr)
         return 1
+    for screen, wid in pairs:
+        reason = web_block_reason(wid)
+        if reason:
+            write_status(screen, wid, "blocked", reason)
+            print(f"{screen}: {reason}", file=sys.stderr)
+            return 1
     os.makedirs(config.CONF_DIR, exist_ok=True)
     success = True
     for screen, wid in pairs:
