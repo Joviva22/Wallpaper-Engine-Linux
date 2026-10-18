@@ -1,0 +1,38 @@
+{
+  "scope": "Wrapper C++ extraído + Node VM. Propuesta con API simulada; no está instalada ni valida adaptadores C++/QuickJS.",
+  "results": [
+    {
+      "id": "3088099655",
+      "object": 97,
+      "reason": "thisScene.getLayer oculto por shim local",
+      "current_wrapper": {
+        "error": "TypeError: thisScene.getLayer is not a function"
+      },
+      "proposed_with_mock_api": {
+        "error": null
+      }
+    },
+    {
+      "id": "2947399331",
+      "object": 349,
+      "reason": "engine.userProperties ausente en shim y EngineObject",
+      "current_wrapper": {
+        "error": "TypeError: Cannot read properties of undefined (reading 'name')"
+      },
+      "proposed_with_mock_api": {
+        "error": null
+      }
+    },
+    {
+      "id": "3208556055",
+      "object": 608,
+      "reason": "Vec3 no publicado como constructor global",
+      "current_wrapper": {
+        "error": "ReferenceError: Vec3 is not defined"
+      },
+      "proposed_with_mock_api": {
+        "error": null
+      }
+    }
+  ]
+}
