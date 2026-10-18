@@ -112,7 +112,9 @@ cd ~/wallpaperengine-picker
   sesion (solo si ya has aplicado un wallpaper al menos una vez).
 
 Para actualizar despues de hacer `git pull`, no hace falta reinstalar nada: los symlinks
-apuntan al repo.
+apuntan al repo. Los comandos con `sudo` piden confirmacion antes de ejecutarse (`./install.sh
+--yes` para saltarla). `./uninstall.sh` quita symlinks, lanzador y autostart; con `--purge`
+borra tambien la configuracion y la cache.
 
 ## Uso
 
@@ -345,16 +347,11 @@ patron que el motor ya usa para `--volume` (`GLPlayer::setVolume`). Verificado l
 vuelta el valor con `mpv_get_property` en el propio proceso real: con `--speed 2.5` mpv
 confirma internamente `speed=2.5`.
 
-El binario y la libreria instalados en `/opt/linux-wallpaperengine/` fueron sustituidos por
-esta version parcheada (con backup de los originales junto a ellos,
-`*.bak_original`); si se reinstala el paquete `linux-wallpaperengine-git` de AUR, este flag
-desaparecera hasta volver a aplicar el parche (el codigo fuente parcheado, con submodulos
-inicializados, quedo clonado durante esta sesion). Como es un flag nuevo del motor y no algo
-que dependa del wallpaper, solo tiene efecto en wallpapers de tipo Video (o con video
-incrustado dentro de una escena); en un wallpaper sin ningun video no hace nada. El ajuste se
-guarda por pantalla en `speed.json`, y solo se pasa `--speed` al motor cuando es distinto de
-1.0 (por si en el futuro se reinstala una version del motor sin el parche, no romper el resto
-de argumentos).
+El parche es `patches/0002-playback-speed-scenes-and-video.patch` (tambien acelera el reloj
+de las escenas) y se compila con `scripts/build-engine.sh` (ver "Motor parcheado y wallpapers
+web" mas abajo). Sin ese motor instalado, el combo "Velocidad" aparece desactivado y
+`wallpaperengine-apply` no pasa `--speed`, para no romper el arranque con un motor que no lo
+conoce.
 
 ### Rotacion automatica de wallpapers
 
@@ -461,6 +458,31 @@ Todo el estado vive en `~/.config/wallpaperengine-picker/`:
 
 Las miniaturas se cachean en `~/.cache/wallpaperengine-picker/` (se pueden borrar sin
 problema, se regeneran solas).
+
+## Motor parcheado y wallpapers web
+
+El motor `linux-wallpaperengine` de AUR (r627) tiene dos fallos que afectan a los wallpapers
+de tipo **Web**, y no tiene `--speed`. El repositorio incluye los parches y un script para
+compilar una version corregida **sin root**, en `~/.local/opt/linux-wallpaperengine`:
+
+    scripts/build-engine.sh
+
+- `patches/0001`: los wallpapers web se veian en negro porque `RenderHandler::OnPaint`
+  subia los pixeles de CEF al id del framebuffer en vez de al de la textura
+  (Almamu/linux-wallpaperengine#629).
+- `patches/0002`: flag `--speed` (de 0,25 a 4) para escenas y videos.
+
+Si ese motor existe, `wallpaperengine-apply` y la GUI lo usan en lugar del del sistema
+(`config.engine_executable()`). La primera compilacion descarga CEF (cientos de MB) y tarda un
+buen rato; el script no desinstala nada del sistema. Ademas, para los wallpapers web
+`apply` precarga `libcef.so` (`LD_PRELOAD`), porque si no el motor muere al arrancar con
+"close symbol missing" (issue #628).
+
+**Los wallpapers web estan desactivados por defecto.** Un wallpaper web es HTML y JavaScript
+de terceros, y el motor ejecuta CEF **sin sandbox** (`no_sandbox = true`), con acceso a red y a
+tus archivos. La primera vez que apliques uno, la app te pide confirmacion; la eleccion se
+guarda en `allow_web` de `config.json` y se puede revocar desde el menu. La rotacion y el
+aleatorio nunca eligen wallpapers web.
 
 ## Notas y limitaciones
 

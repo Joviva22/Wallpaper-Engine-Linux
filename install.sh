@@ -2,7 +2,8 @@
 # Instala wallpaperengine-picker: instala las dependencias que falten (Arch,
 # Debian/Ubuntu, Fedora y openSUSE), detecta tu biblioteca de Steam, crea
 # symlinks en ~/.local/bin, un lanzador en el menu de aplicaciones y una
-# entrada de autostart de KDE.
+# entrada de autostart de KDE. Los comandos con sudo piden confirmacion (o usa --yes).
+# Para quitarlo todo: ./uninstall.sh
 set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
@@ -54,7 +55,21 @@ if [[ "$PM" != unknown ]]; then
     command -v steam >/dev/null 2>&1 || missing_pkgs+=(${PKG_STEAM[$PM]})
 fi
 
+ASSUME_YES=0
+[[ "${1:-}" == "-y" || "${1:-}" == "--yes" ]] && ASSUME_YES=1
+
+# Pide confirmacion antes de ejecutar nada con sudo (salvo con --yes o sin terminal).
+confirm_sudo() {
+    echo "Esto ejecutara comandos con sudo ($PM): $*"
+    if ((ASSUME_YES)) || [[ ! -t 0 ]]; then
+        return 0
+    fi
+    read -r -p "¿Continuar? [s/N] " answer
+    [[ "$answer" =~ ^[sSyY]$ ]] || { echo "Cancelado."; exit 1; }
+}
+
 if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+    confirm_sudo "instalar ${missing_pkgs[*]}"
     echo "Instalando dependencias que faltan (${missing_pkgs[*]})..."
     case "$PM" in
         pacman) sudo pacman -S --needed --noconfirm "${missing_pkgs[@]}" ;;
@@ -102,6 +117,7 @@ if ! command -v steamcmd >/dev/null 2>&1; then
             ;;
         apt)
             echo "Instalando steamcmd (necesita el repositorio multiverse/non-free y arquitectura i386)..."
+            confirm_sudo "añadir la arquitectura i386, el repositorio multiverse e instalar steamcmd"
             sudo dpkg --add-architecture i386
             sudo add-apt-repository -y multiverse 2>/dev/null || true
             echo steam steam/question select "I AGREE" | sudo debconf-set-selections
