@@ -14,6 +14,7 @@
 #   0008  wallpapers web: listeners de medios (titulo, artista, estado y posicion del reproductor MPRIS)
 #   0009  wallpapers web: hoja de estilos de usuario (fondo propio, scripts/web-background.py)
 #   0010  Nikke Stage conserva su almacenamiento (ajustes y personajes descargados) entre ejecuciones
+#   0011  rueda del raton para wallpapers web (Wayland); el teclado no llega a un fondo de escritorio
 #
 # Requisitos (Arch): git cmake sdl2 glm wayland-protocols xorg-xrandr lz4 ffmpeg mpv glfw
 # glew freeglut libpulse libcups at-spi2-core nss libxcomposite libxdamage nspr.

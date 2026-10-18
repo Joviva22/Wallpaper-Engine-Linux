@@ -1,0 +1,115 @@
+diff --git a/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.cpp b/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.cpp
+index b27b7cf1..177d24a2 100644
+--- a/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.cpp
++++ b/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.cpp
+@@ -91,6 +91,24 @@ WallpaperEngine::Input::MouseClickStatus WaylandMouseInput::leftClick () const {
+     return MouseClickStatus::Released;
+ }
+ 
++glm::dvec2 WaylandMouseInput::consumeScroll () const {
++    // the active viewport is const-qualified for the other getters; the scroll counter is the one thing
++    // that is read-and-cleared here
++    auto* viewport = const_cast<WallpaperEngine::Render::Drivers::Output::WaylandOutputViewport*> (
++	this->getActiveOutputViewport ()
++    );
++
++    if (!viewport) {
++	return { 0.0, 0.0 };
++    }
++
++    const glm::dvec2 scroll = viewport->scroll;
++
++    viewport->scroll = { 0.0, 0.0 };
++
++    return scroll;
++}
++
+ const WallpaperEngine::Render::Drivers::Output::WaylandOutputViewport*
+ WaylandMouseInput::getActiveOutputViewport () const {
+     if (this->m_waylandDriver.viewportInFocus && this->m_waylandDriver.viewportInFocus->rendering) {
+diff --git a/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.h b/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.h
+index 55744377..94fc24e3 100644
+--- a/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.h
++++ b/src/WallpaperEngine/Input/Drivers/WaylandMouseInput.h
+@@ -43,6 +43,8 @@ public:
+      */
+     [[nodiscard]] MouseClickStatus rightClick () const override;
+ 
++    [[nodiscard]] glm::dvec2 consumeScroll () const override;
++
+ private:
+     [[nodiscard]] const Render::Drivers::Output::WaylandOutputViewport* getActiveOutputViewport () const;
+     [[nodiscard]] std::optional<glm::dvec2> queryHyprlandCursorPosition () const;
+diff --git a/src/WallpaperEngine/Input/MouseInput.h b/src/WallpaperEngine/Input/MouseInput.h
+index 7839ce56..eb67a99d 100644
+--- a/src/WallpaperEngine/Input/MouseInput.h
++++ b/src/WallpaperEngine/Input/MouseInput.h
+@@ -39,5 +39,11 @@ public:
+      * @return The status of the mouse's right click
+      */
+     [[nodiscard]] virtual MouseClickStatus rightClick () const = 0;
++
++    /**
++     * @return The wheel movement (x horizontal, y vertical, in pointer axis units) accumulated since the last
++     * call, which is then cleared. Drivers that do not track the wheel return zero.
++     */
++    [[nodiscard]] virtual glm::dvec2 consumeScroll () const { return { 0.0, 0.0 }; }
+ };
+ } // namespace WallpaperEngine::Input
+diff --git a/src/WallpaperEngine/Render/Drivers/Output/WaylandOutputViewport.h b/src/WallpaperEngine/Render/Drivers/Output/WaylandOutputViewport.h
+index 909b327d..15176bae 100644
+--- a/src/WallpaperEngine/Render/Drivers/Output/WaylandOutputViewport.h
++++ b/src/WallpaperEngine/Render/Drivers/Output/WaylandOutputViewport.h
+@@ -48,6 +48,8 @@ namespace Output {
+ 	zwlr_layer_surface_v1* layerSurface = nullptr;
+ 	wl_callback* frameCallback = nullptr;
+ 	glm::dvec2 mousePos = { 0, 0 };
++	/** wheel movement accumulated since the input driver last consumed it */
++	glm::dvec2 scroll = { 0, 0 };
+ 	WallpaperEngine::Input::MouseClickStatus leftClick = WallpaperEngine::Input::MouseClickStatus::Released;
+ 	WallpaperEngine::Input::MouseClickStatus rightClick = WallpaperEngine::Input::MouseClickStatus::Released;
+ 	wl_cursor* pointer = nullptr;
+diff --git a/src/WallpaperEngine/Render/Drivers/WaylandOpenGLDriver.cpp b/src/WallpaperEngine/Render/Drivers/WaylandOpenGLDriver.cpp
+index e4b722d9..a651a97b 100644
+--- a/src/WallpaperEngine/Render/Drivers/WaylandOpenGLDriver.cpp
++++ b/src/WallpaperEngine/Render/Drivers/WaylandOpenGLDriver.cpp
+@@ -41,7 +41,20 @@ static void handlePointerEnter (
+ static void
+ handlePointerLeave (void* data, struct wl_pointer* wl_pointer, uint32_t serial, struct wl_surface* surface) { }
+ 
+-static void handlePointerAxis (void* data, wl_pointer* wl_pointer, uint32_t time, uint32_t axis, wl_fixed_t value) { }
++static void handlePointerAxis (void* data, wl_pointer* wl_pointer, uint32_t time, uint32_t axis, wl_fixed_t value) {
++    const auto driver = static_cast<WaylandOpenGLDriver*> (data);
++
++    if (!driver->viewportInFocus) {
++	return;
++    }
++
++    // accumulate; the render thread reads and clears it once per frame
++    if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
++	driver->viewportInFocus->scroll.y += wl_fixed_to_double (value);
++    } else if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
++	driver->viewportInFocus->scroll.x += wl_fixed_to_double (value);
++    }
++}
+ 
+ static void handlePointerMotion (
+     void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y
+diff --git a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+index 85e8365a..d237cafb 100644
+--- a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
++++ b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+@@ -334,6 +334,13 @@ void CWeb::updateMouse (const glm::ivec4& viewport) {
+ 	);
+     }
+ 
++    // mouse wheel: Wayland axis units are ~10 per notch, CEF expects pixels with the opposite sign
++    if (const glm::dvec2 scroll = input.consumeScroll (); scroll.x != 0.0 || scroll.y != 0.0) {
++	this->m_browser->GetHost ()->SendMouseWheelEvent (
++	    evt, static_cast<int> (-scroll.x * 6.0), static_cast<int> (-scroll.y * 6.0)
++	);
++    }
++
+     this->m_leftClick = leftClick;
+     this->m_rightClick = rightClick;
+ }
