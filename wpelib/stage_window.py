@@ -13,7 +13,7 @@ from .l2d_pack import PackError
 
 
 class StageCharactersWindow(Gtk.Window):
-    COL_INSTALLED, COL_CODE, COL_NAME = range(3)
+    COL_INSTALLED, COL_CODE, COL_NAME, COL_PACK = range(4)
 
     def __init__(self, on_done=None):
         super().__init__(title="Nikke Stage: personajes")
@@ -42,14 +42,14 @@ class StageCharactersWindow(Gtk.Window):
         search_row.pack_start(self.only_installed, False, False, 0)
         box.pack_start(search_row, False, False, 0)
 
-        self.store = Gtk.ListStore(bool, str, str)
+        self.store = Gtk.ListStore(bool, str, str, str)
         self.filter = self.store.filter_new()
         self.filter.set_visible_func(self._visible)
         self.view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.filter))
         self.view.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         toggle = Gtk.CellRendererToggle()
         self.view.append_column(Gtk.TreeViewColumn("Instalado", toggle, active=self.COL_INSTALLED))
-        for title, column in (("Codigo", self.COL_CODE), ("Nombre", self.COL_NAME)):
+        for title, column in (("Codigo", self.COL_CODE), ("Nombre", self.COL_NAME), ("Pack gratuito", self.COL_PACK)):
             tree_column = Gtk.TreeViewColumn(title, Gtk.CellRendererText(), text=column)
             tree_column.set_sort_column_id(column)
             tree_column.set_resizable(True)
@@ -141,7 +141,7 @@ class StageCharactersWindow(Gtk.Window):
 
     def _finished(self, error, finished_message):
         self._set_busy(False, error or finished_message)
-        self._fill(nikke_stage.catalog(self._index))
+        self._fill(nikke_stage.catalog(self._index, self._packs))
         if not error and self.on_done:
             self.on_done()
         return False
@@ -149,11 +149,13 @@ class StageCharactersWindow(Gtk.Window):
     # -- catalogo -----------------------------------------------------------
 
     _index = None
+    _packs = None
 
     def _fill(self, rows):
         self.store.clear()
-        for code, name, installed in rows:
-            self.store.append([installed, code, name])
+        for code, name, installed, available in rows:
+            pack = "?" if available is None else ("si" if available else "no hay")
+            self.store.append([installed, code, name, pack])
         self.filter.refilter()
 
     def _load_catalog(self):
@@ -163,13 +165,15 @@ class StageCharactersWindow(Gtk.Window):
 
         def worker():
             index = nikke_stage.l2d_index()
-            GLib.idle_add(self._catalog_ready, index)
+            packs = nikke_stage.available_packs()
+            GLib.idle_add(self._catalog_ready, index, packs)
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _catalog_ready(self, index):
+    def _catalog_ready(self, index, packs):
         self._index = index
-        rows = nikke_stage.catalog(index)
+        self._packs = packs
+        rows = nikke_stage.catalog(index, packs)
         self._fill(rows)
         if rows:
             self._set_busy(False, f"{len(rows)} personajes en el catalogo; "
@@ -181,7 +185,13 @@ class StageCharactersWindow(Gtk.Window):
     # -- acciones -----------------------------------------------------------
 
     def _on_download(self, _button):
-        codes = [c for c in self._selected_codes()]
+        model, paths = self.view.get_selection().get_selected_rows()
+        selected = [(model[path][self.COL_CODE], model[path][self.COL_PACK]) for path in paths]
+        codes = [code for code, pack in selected if pack != "no hay"]
+        skipped = [code for code, pack in selected if pack == "no hay"]
+        if skipped and not codes:
+            self.status.set_text("Esos personajes no tienen pack gratuito: " + ", ".join(skipped))
+            return
         if not codes:
             self.status.set_text("Selecciona uno o varios personajes de la lista.")
             return

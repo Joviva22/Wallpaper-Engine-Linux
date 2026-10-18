@@ -261,8 +261,22 @@ def install_wallpaper():
     return target
 
 
+def normalize_code(text):
+    """Acepta variantes habituales de un codigo ('C080_1', 'c80', ' c010 ') y devuelve el canonico
+    ('c080_01', 'c080', 'c010'), o None si no parece un codigo."""
+    match = re.fullmatch(r"c(\d{1,4})(?:_(\d{1,2}))?", text.strip().lower())
+    if not match:
+        return None
+    number = match.group(1).zfill(3)
+    return f"c{number}" + (f"_{match.group(2).zfill(2)}" if match.group(2) else "")
+
+
 def resolve(query, index):
-    """Convierte un nombre ('Makima') en codigo ('c800'); los codigos validos pasan tal cual."""
+    """Convierte un nombre ('Makima') en codigo ('c800'); los codigos (incluso mal escritos, como
+    'c080_1') se normalizan."""
+    code = normalize_code(query)
+    if code and l2d_pack.CODE_RE.match(code):
+        return code
     if l2d_pack.CODE_RE.match(query):
         return query
     needle = query.strip().lower()
@@ -286,12 +300,43 @@ def search(query, index=None):
             if l2d_pack.CODE_RE.match(str(i)) and needle in str(e.get("name", "")).lower()]
 
 
-def catalog(index=None):
-    """Catalogo completo [(codigo, nombre, instalado)] de personajes descargables."""
+PACKS_API = "https://api.github.com/repos/I6RaVeN9I/nikke-wallpaper-packs/releases/tags/v1.0"
+
+
+def available_packs():
+    """Codigos con pack descargable en la release del repositorio de packs (o None si no se puede saber).
+    Se guarda en cache por si GitHub no responde."""
+    cache = os.path.join(config_files(), "packs_available.json")
+    try:
+        with urllib.request.urlopen(PACKS_API, timeout=20) as resp:
+            data = json.loads(resp.read(10 * 1024 * 1024))
+        names = sorted(a["name"][:-4] for a in data.get("assets", []) if str(a.get("name", "")).endswith(".zip"))
+        os.makedirs(config_files(), exist_ok=True)
+        with open(cache, "w", encoding="utf-8") as f:
+            json.dump(names, f)
+        return set(names)
+    except (OSError, ValueError, KeyError, TypeError):
+        try:
+            with open(cache, encoding="utf-8") as f:
+                return set(json.load(f))
+        except (OSError, ValueError):
+            return None
+
+
+def catalog(index=None, packs=None):
+    """Catalogo [(codigo, nombre, instalado, disponible)]: los personajes de Nikke-db mas los packs que solo
+    existen en el repositorio (sin nombre). `disponible` es False si no hay pack gratuito (None = se desconoce)."""
     index = l2d_index() if index is None else index
+    packs = available_packs() if packs is None else packs
     installed = read_manifest()["characters"]
-    return [(i, e.get("name", i), i in installed) for i, e in sorted(index.items(), key=lambda kv: str(kv[0]))
-            if l2d_pack.CODE_RE.match(str(i))]
+    rows = {}
+    for code, entry in index.items():
+        if l2d_pack.CODE_RE.match(str(code)):
+            rows[code] = (code, entry.get("name", code), code in installed, None if packs is None else code in packs)
+    for code in sorted(packs or ()):
+        if code not in rows and l2d_pack.CODE_RE.match(code):
+            rows[code] = (code, code, code in installed, True)
+    return [rows[c] for c in sorted(rows)]
 
 
 def add(codes, progress=None):
@@ -302,7 +347,12 @@ def add(codes, progress=None):
     codes = [resolve(c, index) for c in codes]
     for code in codes:
         report(f"Descargando {code}...")
-        data = l2d_pack.download(code)
+        try:
+            data = l2d_pack.download(code)
+        except PackError as error:
+            if "404" in str(error):
+                raise PackError(f"{code} no tiene pack gratuito en nikke-wallpaper-packs, asi que no se puede descargar.") from error
+            raise
         dest = os.path.join(config_files(), "characters")
         os.makedirs(dest, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="nikke-stage-") as tmp:

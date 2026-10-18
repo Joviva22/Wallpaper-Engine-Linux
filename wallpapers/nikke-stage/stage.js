@@ -21,7 +21,9 @@
   // ------------------------------------------------------------------ state
   var diskChars = {};        // code -> { name, version }   (installed on disk)
   var dbChars = {};          // code -> { name, version }   (downloaded in the panel, kept in IndexedDB)
+  var packs = null;          // codes with a free pack in the repository (null = unknown)
   var catalog = [];          // [{ id, name }] from Nikke-db
+  var packs = null;          // codes with a free pack in the release (null = unknown)
   var props = {};            // defaults delivered by the engine (Personalizar)
   var saved = null;          // { values, base } from localStorage
   var values = {};           // effective settings
@@ -191,15 +193,34 @@
     });
   }
 
-  // the Spine asset manager decodes binaries and atlas text from base64 data URIs (rawDataURIs), so blob: URLs
-  // do not work for them
-  function dataUri(blob) {
-    return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function () { resolve(reader.result); };
-      reader.onerror = function () { reject(reader.error); };
-      reader.readAsDataURL(blob);
-    });
+  // Packs that are not on disk are served from memory through a custom Spine Downloader: the skeleton and atlas bytes
+  // are handed over directly (the stock rawDataURIs route decodes them with atob(), which garbles non-ASCII region
+  // names such as the Korean ones in some packs), and only the PNG pages use blob: URLs.
+  function memoryAssets() { return { bytes: {}, urls: {} }; }
+
+  function addAsset(assets, path, bytes) {
+    if (/\.png$/i.test(path)) assets.urls[path] = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+    else assets.bytes[path] = bytes;
+  }
+
+  function makeDownloader(runtime, assets) {
+    var downloader = new runtime.Downloader();
+    Object.keys(assets.urls).forEach(function (path) { downloader.rawDataUris[path] = assets.urls[path]; });
+    var decode = function (bytes) { return new TextDecoder().decode(bytes); };
+    var plainText = downloader.downloadText.bind(downloader);
+    var plainBinary = downloader.downloadBinary.bind(downloader);
+    var plainJson = downloader.downloadJson.bind(downloader);
+    downloader.downloadText = function (url, success, error) {
+      if (assets.bytes[url]) success(decode(assets.bytes[url])); else plainText(url, success, error);
+    };
+    downloader.downloadBinary = function (url, success, error) {
+      if (assets.bytes[url]) success(assets.bytes[url]); else plainBinary(url, success, error);
+    };
+    downloader.downloadJson = function (url, success, error) {
+      if (assets.bytes[url]) { try { success(JSON.parse(decode(assets.bytes[url]))); } catch (e) { error(0, String(e)); } }
+      else plainJson(url, success, error);
+    };
+    return downloader;
   }
 
   function skeletonVersion(bytes) {
@@ -271,15 +292,15 @@
   function rawUrlsFor(code) {
     if (blobUrls[code]) return Promise.resolve(blobUrls[code]);
     var range = IDBKeyRange.bound(code + '/', code + '/\uffff');
-    return Promise.all([idb('files', 'readonly', function (s) { return s.getAllKeys(range); }),
-                        idb('files', 'readonly', function (s) { return s.getAll(range); })])
+    return Promise.all([idb('files', 'readonly', function (st) { return st.getAllKeys(range); }),
+                        idb('files', 'readonly', function (st) { return st.getAll(range); })])
       .then(function (result) {
         var keys = result[0], blobs = result[1];
-        return Promise.all(blobs.map(dataUri)).then(function (uris) {
-          var raw = {};
-          keys.forEach(function (key, index) { raw['db/' + key] = uris[index]; });
-          blobUrls[code] = raw;
-          return raw;
+        return Promise.all(blobs.map(function (blob) { return blob.arrayBuffer(); })).then(function (buffers) {
+          var assets = memoryAssets();
+          keys.forEach(function (key, index) { addAsset(assets, 'db/' + key, new Uint8Array(buffers[index])); });
+          blobUrls[code] = assets;
+          return assets;
         });
       });
   }
@@ -400,7 +421,7 @@
         }
       };
       if (animation) config.animation = animation;
-      if (raw) config.rawDataURIs = raw;
+      if (raw) config.downloader = makeDownloader(runtime, raw);
       new runtime.SpinePlayer(container, config);
     }
     create(wantedAnimation || MODE_DEFAULT_ANIM[mode] || 'idle');
@@ -717,10 +738,21 @@
 
   function baseOf(code) { return code.replace(/_\d\d$/, ''); }
 
+  function allItems() {
+    var base = catalog.length ? catalog : installedCodes().map(function (c) { return { id: c, name: charName(c) }; });
+    if (!packs) return base;
+    // packs that exist in the repository but have no entry (name) in Nikke-db: shown by code
+    var known = {};
+    base.forEach(function (item) { known[item.id] = true; });
+    return base.concat(Object.keys(packs).filter(function (code) { return !known[code] && CODE_RE.test(code); })
+      .map(function (code) { return { id: code, name: code, unnamed: true }; }));
+  }
+
+  function hasPack(code) { return !packs || !!packs[code] || !!allChars()[code]; }
+
   function variantsOf(code) {
     var base = baseOf(code);
-    var items = catalog.length ? catalog : installedCodes().map(function (c) { return { id: c, name: charName(c) }; });
-    return items.filter(function (item) { return baseOf(item.id) === base; });
+    return allItems().filter(function (item) { return baseOf(item.id) === base && (hasPack(item.id) || item.id === code); });
   }
 
   function firstLetter(name) {
@@ -731,15 +763,15 @@
   function catalogItems(ignoreLetter) {
     var installed = allChars();
     var query = catalogSearch ? catalogSearch.value.trim().toLowerCase() : '';
-    var items = catalog.length ? catalog : installedCodes().map(function (c) { return { id: c, name: charName(c) }; });
+    var items = allItems();
     var groups = {};
     items.forEach(function (item) { var base = baseOf(item.id); groups[base] = (groups[base] || 0) + 1; });
     return items.filter(function (item) {
       var isVariant = baseOf(item.id) !== item.id;
-      if (isVariant && !showVariants) return false;
+      if ((isVariant || item.unnamed) && !showVariants) return false;
       if (!ignoreLetter && catalogLetter && firstLetter(item.name) !== catalogLetter) return false;
       if (catalogFilter === 'saved' && !installed[item.id]) return false;
-      if (catalogFilter === 'missing' && installed[item.id]) return false;
+      if (catalogFilter === 'missing' && (installed[item.id] || !hasPack(item.id))) return false;
       if (catalogFilter === 'favs' && !favourites[item.id]) return false;
       return !query || item.id.toLowerCase().indexOf(query) !== -1 || String(item.name).toLowerCase().indexOf(query) !== -1;
     }).map(function (item) { item.extra = isBaseWithVariants(item, groups); return item; });
@@ -761,12 +793,13 @@
     items.slice(catalogPage * CATALOG_PAGE, (catalogPage + 1) * CATALOG_PAGE).forEach(function (item) {
       var have = !!installed[item.id];
       var tile = makeTile(item.id, item.name, {
-        badge: catalogBusy[item.id] ? Math.round(catalogBusy[item.id] * 100) + '%' : (have ? 'Guardado' : (favourites[item.id] ? '★' : 'Ver')),
-        badgeClass: have ? '' : 'get',
+        badge: catalogBusy[item.id] ? Math.round(catalogBusy[item.id] * 100) + '%' : (have ? 'Guardado' : (!hasPack(item.id) ? 'Sin pack' : (favourites[item.id] ? '★' : 'Ver'))),
+        badgeClass: have ? '' : (!hasPack(item.id) ? 'none' : 'get'),
         onclick: function () { openPreview(item.id, item.name); }
       });
       if (item.extra) tile.appendChild(el('div', { class: 'variants', text: '+' + item.extra }));
       if (favourites[item.id]) tile.classList.add('fav');
+      if (!have && !hasPack(item.id)) tile.classList.add('nopack');
       if (catalogBusy[item.id]) tile.classList.add('busy');
       catalogGrid.appendChild(tile);
     });
@@ -836,7 +869,30 @@
     }
   }
 
+  function loadPacks() {
+    var PACKS_KEY = 'nikkeStage.packs.v1';
+    function use(names) {
+      packs = {};
+      names.forEach(function (name) { packs[name] = true; });
+      refreshCatalog();
+    }
+    try {
+      var cached = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null');
+      if (cached && cached.names) { use(cached.names); if (Date.now() - cached.t < 24 * 3600 * 1000) return; }
+    } catch (e) { /* ignore */ }
+    fetch('https://api.github.com/repos/I6RaVeN9I/nikke-wallpaper-packs/releases/tags/v1.0')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var names = (data.assets || []).map(function (a) { return a.name; })
+          .filter(function (n) { return /\.zip$/.test(n); }).map(function (n) { return n.slice(0, -4); });
+        if (!names.length) return;
+        try { localStorage.setItem(PACKS_KEY, JSON.stringify({ t: Date.now(), names: names })); } catch (e) { /* ignore */ }
+        use(names);
+      }).catch(function (e) { console.error('packs: ' + e); });
+  }
+
   function loadCatalog() {
+    loadPacks();
     try {
       var cached = JSON.parse(localStorage.getItem(CATALOG_KEY) || 'null');
       if (cached && cached.items) { catalog = cached.items; refreshCatalog(); }
@@ -937,6 +993,7 @@
   }
 
   function openPreview(code, name) {
+    if (!hasPack(code)) { toast((name || code) + ' no tiene pack gratuito en nikke-wallpaper-packs', 4000); return; }
     closePreview();
     preview.mode = 'main';
     preview.code = code;
@@ -958,7 +1015,7 @@
         if (token === preview.token) $('preview-status').textContent = 'Descargando ' + Math.round(fraction * 100) + '%';
       }).then(function (buffer) {
         preview.buffer = buffer;
-        var raw = {};
+        var raw = memoryAssets();
         var skelBytes = null;
         return Promise.all(readZip(buffer).map(function (entry) {
           var parts = entry.name.split('/');
@@ -967,10 +1024,11 @@
           return load.then(function (bytes) {
             var rel = parts.slice(1).join('/');
             if (rel === code + '_00.skel') skelBytes = bytes;
-            return dataUri(new Blob([bytes])).then(function (uri) { raw['pv/' + code + '/' + rel] = uri; });
+            addAsset(raw, 'pv/' + code + '/' + rel, bytes);
           });
         })).then(function () {
           if (!skelBytes) throw new Error('el pack no trae ' + code + '_00.skel');
+          preview.urls = Object.keys(raw.urls).map(function (key) { return raw.urls[key]; });
           return { version: skeletonVersion(skelBytes), folder: 'pv/' + code + '/', raw: raw };
         });
       });

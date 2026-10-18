@@ -69,6 +69,19 @@ class ResolveTest(StageBase):
             stage.resolve("nadie", index)
 
 
+class NormalizeTest(unittest.TestCase):
+    def test_codes(self):
+        for raw, expected in (("c080_1", "c080_01"), ("C080_01", "c080_01"), (" c10 ", "c010"), ("c0800", "c0800"),
+                              ("c80_2", "c080_02"), ("c010", "c010")):
+            self.assertEqual(stage.normalize_code(raw), expected, raw)
+        for bad in ("makima", "080", "c", "c12345", "c080_123", "c080_"):
+            self.assertIsNone(stage.normalize_code(bad), bad)
+
+    def test_resolve_uses_it(self):
+        index = {"c080_01": {"name": "Centi Supreme Holiday"}}
+        self.assertEqual(stage.resolve("c080_1", index), "c080_01")
+
+
 class InstallTest(StageBase):
     def test_add_installs_characters_manifest_and_project(self):
         packs = {"c010": make_pack("c010"), "c195": make_pack("c195", version=b"4.1.20")}

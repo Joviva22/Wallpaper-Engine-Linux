@@ -235,3 +235,7 @@ body.previewing .slot { opacity: 0.25 !important; }
 .chips .chip { padding: 4px 6px; min-width: 24px; font-size: 11px; }
 .chip:disabled { opacity: 0.35; cursor: default; }
 #preview-actions .chips { margin: 0; }
+
+.tile .badge.none { background: rgba(120, 130, 145, 0.85); }
+.tile.nopack { opacity: 0.45; filter: grayscale(0.7); }
+.tile.nopack:hover { transform: none; border-color: transparent; }
