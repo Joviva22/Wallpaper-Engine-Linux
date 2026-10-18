@@ -1,0 +1,88 @@
+diff --git a/src/WallpaperEngine/Application/ApplicationContext.cpp b/src/WallpaperEngine/Application/ApplicationContext.cpp
+index 510ec958..e4c7cbd0 100644
+--- a/src/WallpaperEngine/Application/ApplicationContext.cpp
++++ b/src/WallpaperEngine/Application/ApplicationContext.cpp
+@@ -6,6 +6,7 @@
+ 
+ #include <algorithm>
+ #include <cstdlib>
++#include <cmath>
+ #include <cstring>
+ #include <fstream>
+ #include <iostream>
+@@ -493,6 +494,19 @@ void ApplicationContext::loadSettingsFromArgv () {
+ 	.default_value (30)
+ 	.store_into (this->settings.render.maximumFPS);
+ 
++    performanceGroup.add_argument ("--speed")
++        .help ("Playback multiplier for scenes and videos, from 0.25 to 4.0")
++        .default_value (1.0)
++        .action ([this] (const std::string& value) -> double {
++            size_t used = 0;
++            const double speed = std::stod (value, &used);
++            if (used != value.size () || !std::isfinite (speed) || speed < 0.25 || speed > 4.0) {
++                throw std::runtime_error ("--speed must be a finite number from 0.25 to 4.0");
++            }
++            this->settings.render.playbackSpeed = speed;
++            return speed;
++        });
++
+     performanceGroup.add_argument ("--no-fullscreen-pause")
+ 	.help ("Prevents the background pausing when an app is fullscreen")
+ 	.flag ()
+diff --git a/src/WallpaperEngine/Application/ApplicationContext.h b/src/WallpaperEngine/Application/ApplicationContext.h
+index 3af58c3b..6d38ed46 100644
+--- a/src/WallpaperEngine/Application/ApplicationContext.h
++++ b/src/WallpaperEngine/Application/ApplicationContext.h
+@@ -113,6 +113,8 @@ public:
+ 	    WINDOW_MODE mode;
+ 	    /** Maximum FPS */
+ 	    int maximumFPS;
++	    /** Playback multiplier for scenes and video textures. */
++	    double playbackSpeed;
+ 	    /** Indicates if pausing should happen when something goes fullscreen */
+ 	    bool pauseOnFullscreen;
+ 	    /**
+@@ -200,6 +202,7 @@ public:
+         .render = {
+             .mode = NORMAL_WINDOW,
+             .maximumFPS = 30,
++            .playbackSpeed = 1.0,
+             .pauseOnFullscreen = true,
+             .pauseOnFullscreenOnlyWhenActive = false,
+             .fullscreenPauseIgnoreAppIds = {},
+diff --git a/src/WallpaperEngine/Application/WallpaperApplication.cpp b/src/WallpaperEngine/Application/WallpaperApplication.cpp
+index c9107afc..1c39adbd 100644
+--- a/src/WallpaperEngine/Application/WallpaperApplication.cpp
++++ b/src/WallpaperEngine/Application/WallpaperApplication.cpp
+@@ -884,7 +884,7 @@ void WallpaperApplication::render () {
+ 	// keep track of the previous frame's time
+ 	g_TimeLast = g_Time;
+ 	// calculate the current time value
+-	g_Time = m_videoDriver->getRenderTime ();
++	g_Time = m_videoDriver->getRenderTime () * this->m_context.settings.render.playbackSpeed;
+ 	// update audio recorder
+ 	m_audioDriver->update ();
+ 	// update the media source
+diff --git a/src/WallpaperEngine/VideoPlayback/MPV/GLPlayer.cpp b/src/WallpaperEngine/VideoPlayback/MPV/GLPlayer.cpp
+index 39f1ff8c..6968744b 100644
+--- a/src/WallpaperEngine/VideoPlayback/MPV/GLPlayer.cpp
++++ b/src/WallpaperEngine/VideoPlayback/MPV/GLPlayer.cpp
+@@ -232,6 +232,17 @@ void GLPlayer::init () {
+     mpv_set_property_string (this->m_handle, "loop", "inf");
+     mpv_set_property (this->m_handle, "volume", MPV_FORMAT_DOUBLE, &this->m_volume);
+ 
++    double speed = this->getContext ().getApp ().getContext ().settings.render.playbackSpeed;
++    if (mpv_set_property (this->m_handle, "speed", MPV_FORMAT_DOUBLE, &speed) < 0) {
++        sLog.exception ("Could not set video playback speed");
++    }
++
++    double actualSpeed = 0.0;
++    if (mpv_get_property (this->m_handle, "speed", MPV_FORMAT_DOUBLE, &actualSpeed) < 0) {
++        sLog.exception ("Could not verify video playback speed");
++    }
++    sLog.out ("Video playback speed: ", actualSpeed, "x");
++
+     // initialize gl context for mpv
+     mpv_opengl_init_params gl_init_params { get_proc_address, this };
+     mpv_render_param params[] { { MPV_RENDER_PARAM_API_TYPE, const_cast<char*> (MPV_RENDER_API_TYPE_OPENGL) },
