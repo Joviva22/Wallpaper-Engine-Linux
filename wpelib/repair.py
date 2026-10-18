@@ -19,9 +19,12 @@ muere. Wallpaper Engine en Windows sí soporta ambas formas; el port de Linux so
 forma escalar. Confirmado con gdb + parcheando una copia aislada del wallpaper."""
 import json
 import os
+import re
 import shutil
 import struct
+import tempfile
 
+from . import config
 from .config import WORKSHOP_DIR
 
 VENDOR_DIR = os.path.join(os.path.dirname(__file__), "vendor_effects")
@@ -109,13 +112,18 @@ def _repack(path, header, entries, raw_by_name):
 
     # A un temporal + rename atomico: un fallo a mitad de escritura no deja el
     # scene.pkg (que Steam puede no volver a descargar) a medias.
-    tmp = path + ".tmp"
+    # El temporal es exclusivo (mkstemp) para que dos escrituras nunca compartan nombre.
+    _atomic_write_bytes(path, bytes(out))
+
+
+def _atomic_write_bytes(path, data):
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".repair-")
     try:
-        with open(tmp, "wb") as f:
-            f.write(out)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
             f.flush()
             os.fsync(f.fileno())
-        shutil.copymode(path, tmp)
+        shutil.copymode(path, tmp) if os.path.exists(path) else os.chmod(tmp, 0o644)
         os.replace(tmp, path)
     except BaseException:
         try:
@@ -123,6 +131,16 @@ def _repack(path, header, entries, raw_by_name):
         except OSError:
             pass
         raise
+
+
+def _backup_once(path):
+    """Copia `path` a `path.bak_original` SOLO si no existe ya. La copia se hace a un
+    temporal y se renombra, para que un backup a medias nunca cuente como backup."""
+    backup = path + ".bak_original"
+    if os.path.isfile(backup):
+        return
+    with open(path, "rb") as f:
+        _atomic_write_bytes(backup, f.read())
 
 
 def _fix_vector_padding(scene):
@@ -208,22 +226,125 @@ def _fix_broken_xray_shader(raw_by_name):
     return True
 
 
-def attempt_repair(wid):
-    """Intenta reparar el scene.pkg de un wallpaper aplicando los patrones de
-    incompatibilidad conocidos. Guarda SIEMPRE una copia del .pkg original la
-    primera vez (scene.pkg.bak_original) antes de tocar nada. Devuelve
-    (huboCambios: bool, mensaje: str)."""
+def _combo_option_value(option):
+    if isinstance(option, dict):
+        return option.get("value")
+    return option
+
+
+def _as_text(value):
+    return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+
+
+def _numeric_text(value):
+    """Si `value` es un texto numerico devuelve el numero (int o float), si no None."""
+    if not isinstance(value, str):
+        return None
+    try:
+        number = float(value.strip())
+    except ValueError:
+        return None
+    if number != number or number in (float("inf"), float("-inf")):
+        return None
+    return int(number) if number == int(number) and "." not in value and "e" not in value.lower() else number
+
+
+def _fix_project_properties(data):
+    """Normaliza propiedades de project.json (combo y slider) que linux-wallpaperengine no
+    acepta (aborta con json type_error.302 o "Combo property must have a value"):
+      - sin campo `value`: se rellena con la opcion indicada por `index`
+      - `value` que no es texto (true, 1...): se convierte a texto
+    y en los `slider`, valores numericos guardados como texto ("50" -> 50).
+    Devuelve el numero de propiedades corregidas."""
+    props = (data.get("general") or {}).get("properties") if isinstance(data, dict) else None
+    if not isinstance(props, dict):
+        return 0
+    fixed = 0
+    for prop in props.values():
+        if isinstance(prop, dict) and prop.get("type") == "slider":
+            # Los slider guardan a veces el numero como texto ("50"); el motor exige numero.
+            for key in ("value", "min", "max", "step"):
+                number = _numeric_text(prop.get(key))
+                if number is not None:
+                    prop[key] = number
+                    fixed += 1
+            continue
+        if not isinstance(prop, dict) or prop.get("type") != "combo":
+            continue
+        # El motor lee tambien el `value` de cada opcion como texto.
+        for option in prop.get("options") or []:
+            if isinstance(option, dict) and "value" in option and not isinstance(option["value"], str):
+                option["value"] = _as_text(option["value"])
+                fixed += 1
+        if "value" not in prop or prop["value"] is None:
+            options = prop.get("options")
+            index = prop.get("index", 0)
+            if isinstance(options, list) and isinstance(index, int) and 0 <= index < len(options):
+                value = _combo_option_value(options[index])
+                if value is not None:
+                    prop["value"] = _as_text(value)
+                    fixed += 1
+        elif not isinstance(prop["value"], str):
+            prop["value"] = _as_text(prop["value"])
+            fixed += 1
+    return fixed
+
+
+def _repair_project_json(folder):
+    """Devuelve el numero de propiedades corregidas en project.json (0 si nada)."""
+    path = os.path.join(folder, "project.json")
+    if not os.path.isfile(path):
+        return 0
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return 0
+    fixed = _fix_project_properties(data)
+    if fixed:
+        _backup_once(path)
+        _atomic_write_bytes(path, json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
+    return fixed
+
+
+def attempt_repair(wid, fix_project=True):
+    """Intenta reparar un wallpaper aplicando los patrones de incompatibilidad
+    conocidos, en project.json (propiedades combo) y en scene.pkg. Guarda SIEMPRE una
+    copia del original la primera vez (*.bak_original) antes de tocar nada. Es seguro
+    llamarla a la vez desde varios procesos: se serializa por wallpaper con un lock.
+    `fix_project=False` omite la normalizacion de project.json (solo se aplica a
+    wallpapers que de verdad fallan, para no alterar los que ya funcionan).
+    Devuelve (huboCambios: bool, mensaje: str)."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(wid))
+    with config.FileLock(os.path.join(config.CONF_DIR, f"repair_{safe}.lock")):
+        return _attempt_repair_locked(wid, fix_project)
+
+
+def _attempt_repair_locked(wid, fix_project=True):
     folder = os.path.join(WORKSHOP_DIR, wid)
+    parts = []
+
+    try:
+        props_fixed = _repair_project_json(folder) if fix_project else 0
+    except OSError as e:
+        return False, f"No se pudo reescribir project.json: {e}"
+    if props_fixed:
+        parts.append(f"{props_fixed} propiedad(es) de project.json normalizadas")
+
     pkg_path = os.path.join(folder, "scene.pkg")
     if not os.path.isfile(pkg_path):
+        if parts:
+            return True, f"Reparado: {'; '.join(parts)} (backup en project.json.bak_original)."
         return False, "Este wallpaper no usa scene.pkg (no hay nada que reparar)."
 
     try:
         header, entries, raw_by_name = _unpack(pkg_path)
         if "scene.json" not in raw_by_name:
-            return False, "scene.pkg no contiene scene.json."
+            return bool(parts), (f"Reparado: {'; '.join(parts)}." if parts else "scene.pkg no contiene scene.json.")
         scene = json.loads(raw_by_name["scene.json"].decode("utf-8"))
     except Exception as e:
+        if parts:
+            return True, f"Reparado: {'; '.join(parts)}. (scene.pkg no se pudo leer: {e})"
         return False, f"No se pudo leer scene.pkg: {e}"
 
     fixed = _fix_vector_padding(scene)
@@ -231,26 +352,25 @@ def attempt_repair(wid):
     xray_fixed = _fix_broken_xray_shader(raw_by_name)
 
     if not fixed and not injected and not xray_fixed:
+        if parts:
+            return True, f"Reparado: {'; '.join(parts)} (backup en project.json.bak_original)."
         return False, "No se encontro ninguna incompatibilidad conocida en este wallpaper."
 
-    backup_path = pkg_path + ".bak_original"
-    if not os.path.isfile(backup_path):
-        shutil.copy2(pkg_path, backup_path)
+    _backup_once(pkg_path)
 
     raw_by_name["scene.json"] = json.dumps(scene, indent=4).encode("utf-8")
     try:
         _repack(pkg_path, header, entries, raw_by_name)
     except Exception as e:
-        return False, f"Fallo al reescribir scene.pkg: {e}"
+        return bool(parts), f"Fallo al reescribir scene.pkg: {e}"
 
-    parts = []
     if fixed:
         parts.append(f"{fixed} campo(s) 'padding' corregidos")
     if injected:
         parts.append(f"efectos anadidos: {', '.join(injected)}")
     if xray_fixed:
         parts.append("shader xray sustituido por la version que reacciona al raton")
-    return True, f"Reparado: {'; '.join(parts)} (backup en scene.pkg.bak_original)."
+    return True, f"Reparado: {'; '.join(parts)} (backup en *.bak_original)."
 
 
 def scan_library_ids():
@@ -270,11 +390,12 @@ def attempt_repair_all(progress_callback=None):
     si se pasa, se llama antes de procesar cada wallpaper (util para una barra de
     progreso). Devuelve (lista_de_ids_reparados, total_revisados)."""
     ids = scan_library_ids()
+    known_bad = config.load_known_bad()
     repaired = []
     for i, wid in enumerate(ids):
         if progress_callback:
             progress_callback(i, len(ids), wid)
-        ok, _msg = attempt_repair(wid)
+        ok, _msg = attempt_repair(wid, fix_project=wid in known_bad)
         if ok:
             repaired.append(wid)
     return repaired, len(ids)

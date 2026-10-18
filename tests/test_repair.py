@@ -69,6 +69,94 @@ class AtomicRepackTest(unittest.TestCase):
         self.assertEqual(os.listdir(d), ["scene.pkg"])
 
 
+class ProjectJsonTest(unittest.TestCase):
+    def combo(self, **kw):
+        return {"type": "combo", "text": "x", **kw}
+
+    def test_fix_properties(self):
+        data = {"general": {"properties": {
+            "noval": self.combo(index=1, options=["a", "b"]),
+            "nodictval": self.combo(index=0, options=[{"label": "L", "value": 7}]),
+            "bool": self.combo(value=True, options=[{"label": "on", "value": True}, {"label": "off", "value": False}]),
+            "ok": self.combo(value="cover", options=[{"label": "c", "value": "cover"}]),
+            "slider": {"type": "slider", "value": "50", "min": "0", "max": 100},
+            "slider_f": {"type": "slider", "value": "1.5"},
+            "text": {"type": "text", "value": None},
+        }}}
+        n = repair._fix_project_properties(data)
+        p = data["general"]["properties"]
+        self.assertEqual(p["noval"]["value"], "b")
+        self.assertEqual(p["nodictval"]["value"], "7")
+        self.assertEqual(p["nodictval"]["options"][0]["value"], "7")
+        self.assertEqual(p["bool"]["value"], "true")
+        self.assertEqual([o["value"] for o in p["bool"]["options"]], ["true", "false"])
+        self.assertEqual(p["ok"]["value"], "cover")
+        self.assertEqual((p["slider"]["value"], p["slider"]["min"], p["slider"]["max"]), (50, 0, 100))
+        self.assertEqual(p["slider_f"]["value"], 1.5)
+        self.assertIsNone(p["text"]["value"])
+        self.assertEqual(n, 9)
+        self.assertEqual(repair._fix_project_properties(data), 0)  # idempotente
+
+    def test_garbage_is_ignored(self):
+        for data in ({}, [], {"general": []}, {"general": {"properties": {"a": 5}}},
+                     {"general": {"properties": {"a": {"type": "combo", "options": "x", "index": "y"}}}}):
+            self.assertEqual(repair._fix_project_properties(data), 0)
+
+    def test_attempt_repair_rewrites_project_with_backup_and_respects_flag(self):
+        d = tempfile.mkdtemp()
+        old = repair.WORKSHOP_DIR
+        repair.WORKSHOP_DIR = d
+        try:
+            os.mkdir(os.path.join(d, "9"))
+            path = os.path.join(d, "9", "project.json")
+            original = {"type": "web", "title": "T\u00edtulo \u5c45\u4e2d",
+                        "general": {"properties": {"p": self.combo(value=True, options=[])}}}
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(original, f)
+            ok, _ = repair.attempt_repair("9", fix_project=False)
+            self.assertFalse(ok)
+            ok, msg = repair.attempt_repair("9")
+            self.assertTrue(ok, msg)
+            with open(path, encoding="utf-8") as f:
+                fixed = json.load(f)
+            self.assertEqual(fixed["general"]["properties"]["p"]["value"], "true")
+            self.assertEqual(fixed["title"], original["title"])
+            with open(path + ".bak_original", encoding="utf-8") as f:
+                self.assertEqual(json.load(f), original)
+            self.assertFalse(repair.attempt_repair("9")[0])  # ya reparado
+        finally:
+            repair.WORKSHOP_DIR = old
+
+
+class LockTest(unittest.TestCase):
+    def test_concurrent_repairs_are_serialized_and_intact(self):
+        import threading
+        d = tempfile.mkdtemp()
+        old = repair.WORKSHOP_DIR
+        repair.WORKSHOP_DIR = d
+        try:
+            os.mkdir(os.path.join(d, "1"))
+            pkg = os.path.join(d, "1", "scene.pkg")
+            scene = {"objects": [{"text": {}, "padding": "8.0 8.0"}]}
+            build_pkg(pkg, {"scene.json": json.dumps(scene).encode(), "x.bin": b"\x00" * 1000})
+            with open(pkg, "rb") as f:
+                original = f.read()
+            results = []
+            threads = [threading.Thread(target=lambda: results.append(repair.attempt_repair("1"))) for _ in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(30)
+            self.assertEqual(sum(1 for ok, _ in results if ok), 1)  # solo uno repara
+            with open(pkg + ".bak_original", "rb") as f:
+                self.assertEqual(f.read(), original)  # el backup es el original intacto
+            _, _, raw = repair._unpack(pkg)
+            self.assertEqual(raw["x.bin"], b"\x00" * 1000)
+            self.assertEqual(sorted(os.listdir(os.path.join(d, "1"))), ["scene.pkg", "scene.pkg.bak_original"])
+        finally:
+            repair.WORKSHOP_DIR = old
+
+
 class RepairTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()

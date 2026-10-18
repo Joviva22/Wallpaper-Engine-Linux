@@ -30,7 +30,7 @@ from .engine_log import append_bounded, capture
 MAX_LOG_BYTES = 5 * 1024 * 1024
 # Firma del bug de formato conocido que repair.py sabe corregir (campo numerico guardado
 # como cadena en scene.json, p.ej. "padding": "32 32").
-REPAIRABLE_LOG_PATTERN = re.compile(r"type_error\.302")
+REPAIRABLE_LOG_PATTERN = re.compile(r"type_error\.302|Combo property must have a value")
 CRASH_LOG_PATTERN = re.compile(r"terminate called|Segmentation fault|Aborted \(core dumped\)|pure virtual method called")
 # Terminaciones por senal que NO son un crash del motor (parada o cambio deliberado).
 NON_CRASH_SIGNALS = {signal.SIGTERM, signal.SIGKILL, signal.SIGINT, signal.SIGHUP}
