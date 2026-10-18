@@ -1,0 +1,9 @@
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#grain { position: fixed; inset: -64px; pointer-events: none; opacity: 0.12; mix-blend-mode: overlay; }
+#caption {
+  position: fixed; left: 4vw; bottom: 5vh; color: #fff; mix-blend-mode: difference; pointer-events: none;
+  font: 300 clamp(14px, 1.6vw, 28px) "Cinzel", "Trajan Pro", Georgia, serif; letter-spacing: 0.6em;
+  text-transform: uppercase; opacity: 0; transition: opacity 1.2s ease;
+}
+#caption.show { opacity: 0.85; }
