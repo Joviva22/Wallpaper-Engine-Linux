@@ -186,7 +186,7 @@ class CrashClassificationTest(unittest.TestCase):
 
 class WatcherTest(Base):
     def test_segfault_is_recorded_then_cleared(self):
-        self.write_engine("kill -SEGV $$")
+        self.write_engine("ulimit -c 0; kill -SEGV $$")
         apply.restart_screen("eDP-1", "123")
         self.assertIn("123", self.known_bad())
         self.assertEqual(self.known_bad()["123"]["screen"], "eDP-1")
@@ -253,7 +253,7 @@ class AutoRepairTest(Base):
         self.write_engine(
             f'if [ ! -f "{self.pkg}.bak_original" ]; then '
             'echo "what():  [json.exception.type_error.302] type must be number, but is string" >&2; '
-            'kill -ABRT $$; fi\nsleep 30')
+            'ulimit -c 0; kill -ABRT $$; fi\nsleep 30')
 
     def tearDown(self):
         self.repair.WORKSHOP_DIR = self._ws
@@ -274,7 +274,7 @@ class AutoRepairTest(Base):
         self.assertFalse(t.is_alive())
 
     def test_unrepairable_crash_is_recorded_without_loop(self):
-        self.write_engine('echo "type_error.302" >&2; kill -ABRT $$')
+        self.write_engine('echo "type_error.302" >&2; ulimit -c 0; kill -ABRT $$')
         os.remove(self.pkg)  # nada que reparar
         apply.restart_screen("eDP-1", "123")
         self.assertIn("123", self.known_bad())
