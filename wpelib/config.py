@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import tempfile
 
-from PIL import Image
+from PIL import Image, ImageFilter, ImageOps
 
 from .classify import classify_project
 
@@ -37,10 +37,10 @@ SPEED_FILE = os.path.join(CONF_DIR, "speed.json")
 SPEED_OPTIONS = [1.0, 1.5, 2.0, 3.0, 4.0]
 DEFAULT_SPEED = 1.0
 MAX_RECENTS = 100
-CACHE_DIR = os.path.expanduser("~/.cache/wallpaperengine-picker/thumbs_v5")
-WORKSHOP_THUMB_CACHE = os.path.expanduser("~/.cache/wallpaperengine-picker/workshop_thumbs")
+CACHE_DIR = os.path.expanduser("~/.cache/wallpaperengine-picker/thumbs_v6")
+WORKSHOP_THUMB_CACHE = os.path.expanduser("~/.cache/wallpaperengine-picker/workshop_thumbs_v2")
 APPLY_SCRIPT = os.path.expanduser("~/.local/bin/wallpaperengine-apply")
-THUMB_SIZE = (320, 320)  # 1:1; debe coincidir con CARD_SIZE en wpelib/ui.py
+THUMB_SIZE = (288, 162)  # 16:9; compartido por biblioteca y Workshop
 DEFAULT_ID = "2168640648"
 STEAM_API_QUERYFILES = "https://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
@@ -460,15 +460,22 @@ def unsubscribe_workshop_item(wid):
         save_properties(properties)
 
 
+def compose_thumb(img):
+    """Conserva toda la vista previa sobre un fondo difuminado panorámico."""
+    img = img.convert("RGB")
+    canvas = ImageOps.fit(img, THUMB_SIZE, method=Image.LANCZOS)
+    canvas = canvas.filter(ImageFilter.GaussianBlur(14))
+    canvas = Image.blend(canvas, Image.new("RGB", THUMB_SIZE, (30, 31, 40)), 0.35)
+    img.thumbnail(THUMB_SIZE, Image.LANCZOS)
+    canvas.paste(img, ((THUMB_SIZE[0] - img.width) // 2,
+                       (THUMB_SIZE[1] - img.height) // 2))
+    return canvas
+
+
 def build_thumb(preview_path, dest_path):
     try:
-        img = Image.open(preview_path)
-        img = img.convert("RGB")
-        img.thumbnail(THUMB_SIZE, Image.LANCZOS)
-        canvas = Image.new("RGB", THUMB_SIZE, (30, 30, 30))
-        x = (THUMB_SIZE[0] - img.width) // 2
-        y = (THUMB_SIZE[1] - img.height) // 2
-        canvas.paste(img, (x, y))
+        with Image.open(preview_path) as source:
+            canvas = compose_thumb(source)
         canvas.save(dest_path, "PNG")
         return True
     except Exception:

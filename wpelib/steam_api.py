@@ -13,7 +13,7 @@ import urllib.error
 from PIL import Image
 
 from .classify import KNOWN_TAGS as CLASSIFY_KNOWN_TAGS
-from .config import STEAM_LIB, WORKSHOP_DIR, THUMB_SIZE, WORKSHOP_THUMB_CACHE, APPID, STEAM_API_QUERYFILES
+from .config import STEAM_LIB, WORKSHOP_DIR, THUMB_SIZE, compose_thumb, WORKSHOP_THUMB_CACHE, APPID, STEAM_API_QUERYFILES
 
 class SteamApiError(Exception):
     pass
@@ -130,11 +130,7 @@ def download_workshop_thumb(wid, url):
             f.write(data)
         with Image.open(tmp_path) as source:
             img = source.convert("RGB")
-        img.thumbnail(THUMB_SIZE, Image.LANCZOS)
-        canvas = Image.new("RGB", THUMB_SIZE, (30, 30, 30))
-        x = (THUMB_SIZE[0] - img.width) // 2
-        y = (THUMB_SIZE[1] - img.height) // 2
-        canvas.paste(img, (x, y))
+        canvas = compose_thumb(img)
         canvas.save(tmp_path, "PNG")
         os.replace(tmp_path, dest)
         return dest

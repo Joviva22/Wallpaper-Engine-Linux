@@ -138,6 +138,7 @@ def _nav_content(icon_name, title, subtitle=None):
         vbox.pack_start(Gtk.Label(label=title, xalign=0), False, False, 0)
         subtitle_label = Gtk.Label(label=subtitle, xalign=0)
         subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+        subtitle_label.set_max_width_chars(18)
         subtitle_label.get_style_context().add_class("dim-label")
         vbox.pack_start(subtitle_label, False, False, 0)
         content.pack_start(vbox, True, True, 0)
@@ -248,7 +249,7 @@ class PickerWindow(Gtk.Window):
 
     def _build_sidebar(self):
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        sidebar.set_size_request(230, -1)
+        sidebar.set_size_request(210, -1)
         sidebar.set_border_width(12)
         sidebar.get_style_context().add_class("wpe-sidebar")
 
@@ -348,20 +349,30 @@ class PickerWindow(Gtk.Window):
             self.monitor_chips[mon] = chip
             self.monitor_chip_subtitles[mon] = subtitle_label
 
-        chips_box.pack_start(Gtk.Label(label="Escalado:"), False, False, 0)
+        playback_btn = Gtk.MenuButton(label="Reproducción")
+        playback_btn.set_tooltip_text("Escalado, audio y velocidad del monitor activo")
+        popover = Gtk.Popover()
+        controls = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        controls.set_border_width(16)
+        popover.add(controls)
+        playback_btn.set_popover(popover)
+        popover.set_relative_to(playback_btn)
+        chips_box.pack_end(playback_btn, False, False, 0)
+
+        controls.pack_start(Gtk.Label(label="Escalado:"), False, False, 0)
         self.scaling_combo = Gtk.ComboBoxText()
         for mode in SCALING_MODES:
             self.scaling_combo.append_text(SCALING_LABELS.get(mode, mode))
         current_mode = self.scaling.get(self.target_monitor, DEFAULT_SCALING)
         self.scaling_combo.set_active(SCALING_MODES.index(current_mode) if current_mode in SCALING_MODES else 0)
         self.scaling_combo.connect("changed", self.on_scaling_changed)
-        chips_box.pack_start(self.scaling_combo, False, False, 0)
+        controls.pack_start(self.scaling_combo, False, False, 0)
 
-        chips_box.pack_start(Gtk.Label(label="Audio:"), False, False, 0)
+        controls.pack_start(Gtk.Label(label="Audio:"), False, False, 0)
         self.audio_toggle = Gtk.ToggleButton()
         self.audio_toggle.set_relief(Gtk.ReliefStyle.NONE)
         self.audio_toggle.connect("toggled", self.on_audio_toggled)
-        chips_box.pack_start(self.audio_toggle, False, False, 0)
+        controls.pack_start(self.audio_toggle, False, False, 0)
 
         self.volume_scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL)
         self.volume_scale.set_range(0, 100)
@@ -370,7 +381,7 @@ class PickerWindow(Gtk.Window):
         self.volume_scale.set_tooltip_text("Volumen")
         self.volume_scale.connect("value-changed", self.on_volume_changed)
         self.volume_scale.connect("button-release-event", self.on_volume_release)
-        chips_box.pack_start(self.volume_scale, False, False, 0)
+        controls.pack_start(self.volume_scale, False, False, 0)
 
         # handler_block imprescindible aqui: set_active() dispara "toggled" de forma
         # SINCRONA en GTK si el estado cambia, y self.status_label (referenciado dentro
@@ -385,7 +396,7 @@ class PickerWindow(Gtk.Window):
         self.volume_scale.set_value(audio_conf.get("volume", DEFAULT_VOLUME))
         self._sync_audio_widgets()
 
-        chips_box.pack_start(Gtk.Label(label="Velocidad:"), False, False, 0)
+        controls.pack_start(Gtk.Label(label="Velocidad:"), False, False, 0)
         self.speed_combo = Gtk.ComboBoxText()
         for s in SPEED_OPTIONS:
             self.speed_combo.append_text(f"{s:g}x")
@@ -398,7 +409,9 @@ class PickerWindow(Gtk.Window):
             self.speed_combo.set_sensitive(False)
             self.speed_combo.set_tooltip_text(
                 "Tu version de linux-wallpaperengine no soporta --speed (requiere un motor parcheado)")
-        chips_box.pack_start(self.speed_combo, False, False, 0)
+        controls.pack_start(self.speed_combo, False, False, 0)
+
+        controls.show_all()
 
         box.pack_start(chips_box, False, False, 0)
         return box

@@ -9,9 +9,9 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gdk, Pango
 
-from .config import APPID
+from .config import APPID, THUMB_SIZE
 
-CARD_SIZE = (320, 320)  # 1:1; debe coincidir con THUMB_SIZE en wpelib/config.py
+CARD_SIZE = THUMB_SIZE
 
 APP_CSS = """
 @define-color wpe_bg #1c1d24;
@@ -21,12 +21,18 @@ APP_CSS = """
 @define-color wpe_accent #7c6cf0;
 @define-color wpe_accent_hover #9384f5;
 @define-color wpe_text #eceef5;
-@define-color wpe_text_dim #9a9cb5;
+@define-color wpe_text_dim #b4b7cb;
 
 window {
     background-color: @wpe_bg;
     color: @wpe_text;
     font-size: 10.5pt;
+}
+
+popover {
+    background-color: @wpe_surface;
+    color: @wpe_text;
+    border: 1px solid @wpe_border;
 }
 
 label { color: @wpe_text; }
@@ -202,6 +208,7 @@ button.wpe-chip {
     border-radius: 999px;
     padding: 6px 14px;
 }
+button.wpe-chip:checked label { color: #ffffff; }
 button.wpe-chip:checked {
     background-color: @wpe_accent;
     color: #ffffff;
@@ -232,17 +239,19 @@ box.wpe-sidebar {
     background-color: @wpe_surface;
     border-right: 1px solid @wpe_border;
 }
-button.wpe-nav-item {
+.wpe-nav-item {
+    box-shadow: none;
+    background-image: none;
     background-color: transparent;
     border: none;
     border-radius: 8px;
     padding: 8px 10px;
 }
-button.wpe-nav-item:checked {
+.wpe-nav-item:checked {
     background-color: alpha(@wpe_accent, 0.25);
     color: @wpe_accent_hover;
 }
-button.wpe-nav-item:hover { background-color: alpha(@wpe_accent, 0.10); }
+.wpe-nav-item:hover { background-color: alpha(@wpe_accent, 0.10); }
 
 /* Panel de detalle */
 box.wpe-detail-panel {
@@ -379,7 +388,7 @@ class WallpaperCard(Gtk.EventBox):
             | Gdk.EventMask.BUTTON_PRESS_MASK
         )
 
-        card_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        card_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(card_box)
 
         # --- Overlay SOLO sobre la miniatura ---
@@ -451,7 +460,13 @@ class WallpaperCard(Gtk.EventBox):
         self.title_label = Gtk.Label(label=title)
         self.title_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.title_label.set_max_width_chars(1)
-        self.title_label.set_halign(Gtk.Align.START)
+        self.title_label.set_halign(Gtk.Align.FILL)
+        self.title_label.set_xalign(0)
+        self.title_label.set_line_wrap(True)
+        self.title_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.title_label.set_lines(2)
+        self.title_label.set_size_request(-1, 40)
+        self.title_label.set_tooltip_text(title)
         self.title_label.get_style_context().add_class("wpe-card-title")
         card_box.pack_start(self.title_label, False, False, 0)
 
