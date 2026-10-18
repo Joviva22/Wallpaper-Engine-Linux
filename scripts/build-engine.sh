@@ -10,7 +10,8 @@
 #   0004  SceneScript de textos: thisScene/engine reales, engine.userProperties, Vec2/3/4 globales
 #   0005  wallpapers web: entrega de propiedades de usuario (applyUserProperties)
 #   0006  wallpapers web: decodificar URLs con %XX (rutas con espacios o UTF-8)
-#   0007  wallpapers web: API de audio (wallpaperRegisterAudioListener) y listeners de medios
+#   0007  wallpapers web: API de audio (wallpaperRegisterAudioListener)
+#   0008  wallpapers web: listeners de medios (titulo, artista, estado y posicion del reproductor MPRIS)
 #
 # Requisitos (Arch): git cmake sdl2 glm wayland-protocols xorg-xrandr lz4 ffmpeg mpv glfw
 # glew freeglut libpulse libcups at-spi2-core nss libxcomposite libxdamage nspr.
