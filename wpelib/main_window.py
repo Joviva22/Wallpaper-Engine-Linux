@@ -31,6 +31,7 @@ from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
 from .properties_window import PropertiesDialog
 from .stage_window import StageCharactersWindow
+from .live_preview import LivePreview, PREVIEW_SECONDS
 from .repair import attempt_repair, attempt_repair_all
 
 TABS = ["Todos", "Favoritos", "Recientes", "Animados", "Ocultos"]
@@ -243,6 +244,7 @@ class PickerWindow(Gtk.Window):
 
         self._apply_seen = {mon: load_json(os.path.join(CONF_DIR, f"status_{mon}.json"), {}).get("token")
                             for mon in self.monitors}
+        self.live_preview = LivePreview()
         self._apply_poll = GLib.timeout_add(1000, self._poll_apply_status)
         GLib.idle_add(self.populate)
 
@@ -510,6 +512,11 @@ class PickerWindow(Gtk.Window):
         preview_btn = icon_button("Vista previa", "view-fullscreen-symbolic")
         preview_btn.connect("clicked", self._on_detail_preview_clicked)
         panel.pack_start(preview_btn, False, False, 0)
+
+        live_btn = icon_button("Probar en ventana", "media-playback-start-symbolic")
+        live_btn.set_tooltip_text(f"Abre el fondo en una ventana propia durante {PREVIEW_SECONDS} s, sin tocar el escritorio")
+        live_btn.connect("clicked", self._on_detail_live_preview)
+        panel.pack_start(live_btn, False, False, 0)
 
         rotation_btn = icon_button("Anadir a rotacion", "media-playlist-repeat-symbolic")
         rotation_btn.connect("clicked", self._on_detail_add_rotation)
@@ -1394,10 +1401,54 @@ class PickerWindow(Gtk.Window):
         assign_btn.connect("clicked", lambda *_: (self.assign_and_apply(wid), dialog.destroy()))
         box.add(assign_btn)
 
+        live_btn = icon_button(f"Probar en ventana ({PREVIEW_SECONDS} s)", "media-playback-start-symbolic")
+        live_btn.connect("clicked", lambda *_: (self.start_live_preview(wid), dialog.destroy()))
+        box.add(live_btn)
+
         dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
         dialog.show_all()
         dialog.run()
         dialog.destroy()
+
+    def start_live_preview(self, wid):
+        """Prueba el wallpaper en una ventana propia (se cierra sola); no cambia el escritorio."""
+        title = self.items_by_id.get(wid, {}).get("title", wid)
+        if not self._allow_web_for(wid):
+            return
+
+        def done(ok, message):
+            def update():
+                if ok:
+                    self.status_label.set_text(f"Prueba de {title}: {message}")
+                else:
+                    self.status_label.set_text(f"{title} falló en la prueba: {message[:300]}")
+                    self._show_rollback_dialog_text(title, message)
+                return False
+            GLib.idle_add(update)
+
+        error = self.live_preview.start(wid, done)
+        if error:
+            self.status_label.set_text(f"No se pudo probar {title}: {error}")
+        else:
+            self.status_label.set_text(
+                f"Probando {title} en una ventana ({PREVIEW_SECONDS} s); no se cambia el escritorio. "
+                f"Cierra la ventana cuando quieras.")
+
+    def _on_detail_live_preview(self, button):
+        children = self.flowbox.get_selected_children()
+        if children:
+            self.start_live_preview(children[0].get_child().wid)
+        else:
+            self.status_label.set_text("Selecciona un wallpaper primero")
+
+    def _show_rollback_dialog_text(self, title, detail):
+        dialog = Gtk.MessageDialog(transient_for=self, modal=False, message_type=Gtk.MessageType.WARNING,
+                                   text=f"«{title}» falló en la prueba")
+        dialog.format_secondary_text(
+            f"No se ha cambiado tu escritorio.\n\nMotivo: {detail.strip()[:500] or 'el motor terminó de forma inesperada'}")
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda d, _r: d.destroy())
+        dialog.show_all()
 
     def show_context_menu(self, card, event, wid):
         menu = Gtk.Menu()
@@ -1413,6 +1464,10 @@ class PickerWindow(Gtk.Window):
         fav_item.set_active(wid in self.favorite_ids)
         fav_item.connect("toggled", lambda mi: card.heart_btn.set_active(mi.get_active()))
         menu.append(fav_item)
+
+        live_item = Gtk.MenuItem(label="Probar en ventana")
+        live_item.connect("activate", lambda *_: self.start_live_preview(wid))
+        menu.append(live_item)
 
         preview_item = Gtk.MenuItem(label="Vista previa")
         preview_item.connect("activate", lambda *_: self.show_preview(wid))
@@ -1584,6 +1639,7 @@ class PickerWindow(Gtk.Window):
         })
 
     def on_destroy(self, widget):
+        self.live_preview.stop()
         GLib.source_remove(self._apply_poll)
         self.save_current_ui_state()
 
