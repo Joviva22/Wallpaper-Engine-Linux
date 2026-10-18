@@ -29,6 +29,8 @@
   function createSlot(index) {
     var element = document.createElement('div');
     element.className = 'slot';
+    element.style.transition = 'opacity 0.6s ease';
+    element.style.opacity = '0';
     element.id = 'slot' + (index + 1);
     document.getElementById('stage').appendChild(element);
     return { index: index, element: element, code: null, loaded: null, player: null, token: 0 };
@@ -41,6 +43,8 @@
       slot.player = null;
     }
     slot.element.innerHTML = '';
+    slot.element.style.opacity = '0';
+    slot.reactions = null;
   }
 
   function loadCharacter(slot, code) {
@@ -79,17 +83,15 @@
         success: function (player) {
           if (token !== slot.token) { try { player.dispose(); } catch (e) { /* ignore */ } return; }
           slot.player = player;
+          player.speed = speedFactor;
+          slot.element.style.opacity = '1';
+          slot.reactions = names_of(player).filter(isReaction);
           // the spine-player.js bundled by the Nikke wallpapers is a modified build that zooms x2 by default
           if ('nrb_zoom' in player) { player.anrb_posxa = 0; player.nrb_posy = 0; }
-          var names = player.skeleton.data.animations.map(function (a) { return a.name; });
-          var reactions = names.filter(function (n) { return /^(action|shy|angry|talk|special)/.test(n); });
+          var reactions = slot.reactions;
+          slot.idleName = animation;
           // clicking the character plays a reaction and goes back to idle
-          slot.element.onclick = function () {
-            if (!reactions.length || !slot.player || !animation) return;
-            var reaction = reactions[Math.floor(Math.random() * reactions.length)];
-            slot.player.setAnimation(reaction, false);
-            slot.player.addAnimation(animation, true, 0);
-          };
+          slot.element.onclick = function () { playReaction(slot); };
         },
         error: function (player, message) {
           if (animation && token === slot.token) {
@@ -110,6 +112,35 @@
     create('idle');
   }
 
+  function names_of(player) {
+    return player.skeleton.data.animations.map(function (a) { return a.name; });
+  }
+
+  function isReaction(name) {
+    return /^(action|shy|angry|talk|special)/.test(name);
+  }
+
+  function playReaction(slot) {
+    if (!slot.player || !slot.reactions || !slot.reactions.length || !slot.idleName) return;
+    var reaction = slot.reactions[Math.floor(Math.random() * slot.reactions.length)];
+    slot.player.setAnimation(reaction, false);
+    slot.player.addAnimation(slot.idleName, true, 0);
+  }
+
+  var speedFactor = 1;     // animation speed multiplier
+  var reactTimer = null;   // periodic automatic reactions
+
+  function scheduleReactions(seconds) {
+    if (reactTimer) { clearInterval(reactTimer); reactTimer = null; }
+    if (seconds > 0) {
+      reactTimer = setInterval(function () {
+        var visible = slots.filter(function (slot) { return slot.player && slot.reactions && slot.reactions.length; });
+        if (visible.length) playReaction(visible[Math.floor(Math.random() * visible.length)]);
+      }, seconds * 1000);
+    }
+  }
+
+  var autoSpread = true;  // evenly spread the visible characters
   var bounce = 0;     // how much the characters pulse with the music (0..1)
   var level = 0;      // smoothed audio level (0..1)
 
@@ -123,6 +154,12 @@
     var i = slot.index + 1;
     var scale = Number(prop(props, 'scale' + i, 90)) / 100;
     var x = Number(prop(props, 'x' + i, 50));
+    if (autoSpread) {
+      // spread the visible characters evenly across the screen
+      var visible = slots.filter(function (other) { return other.code && other.code !== 'none'; });
+      var position = visible.indexOf(slot);
+      if (position !== -1) x = (position + 1) * 100 / (visible.length + 1);
+    }
     var height = window.innerHeight * scale;
     var width = height * 0.75;
     slot.element.style.height = height + 'px';
@@ -138,14 +175,17 @@
   function apply(props) {
     latest = props;
     bounce = Number(prop(props, 'bounce', 0)) / 100;
+    autoSpread = prop(props, 'autospread', true) !== false && prop(props, 'autospread', true) !== 'false';
+    speedFactor = (Number(prop(props, 'speed', 100)) || 100) / 100;
+    slots.forEach(function (slot) { if (slot.player) slot.player.speed = speedFactor; });
+    scheduleReactions(Number(prop(props, 'reactevery', 0)));
     var color = cssColor(prop(props, 'bgcolor', null));
     if (color) document.body.style.background = color;
+    slots.forEach(function (slot) { slot.code = prop(props, 'char' + (slot.index + 1), 'none'); });
     slots.forEach(function (slot) {
-      var wanted = prop(props, 'char' + (slot.index + 1), 'none');
       // size the container first: the player measures it when it starts
-      slot.code = wanted;
       layout(slot, props);
-      if (wanted !== slot.loaded) loadCharacter(slot, wanted);
+      if (slot.code !== slot.loaded) loadCharacter(slot, slot.code);
     });
   }
 

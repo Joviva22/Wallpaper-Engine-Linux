@@ -8,9 +8,11 @@ import unittest
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_spec = importlib.util.spec_from_file_location("nikke_stage", os.path.join(ROOT, "scripts", "nikke-stage.py"))
-stage = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(stage)
+os.environ.setdefault("HOME", tempfile.mkdtemp())
+sys.path.insert(0, ROOT)
+
+from wpelib import l2d_pack, nikke_stage as stage  # noqa: E402
+from wpelib.l2d_pack import PackError  # noqa: E402
 
 
 def make_pack(code, version=b"4.0.47", extra=None):
@@ -39,7 +41,7 @@ class StageBase(unittest.TestCase):
         for name in stage.RUNTIME_FILES:
             with open(os.path.join(donor, name), "w") as f:
                 f.write("// runtime")
-        self._saved = (stage.workshop_dir, stage.l2d_index, stage.slotlib.download)
+        self._saved = (stage.workshop_dir, stage.l2d_index, l2d_pack.download)
         stage.workshop_dir = lambda: self.workshop
         stage.l2d_index = lambda: {"c010": {"id": "c010", "name": "Rapi"},
                                    "c800": {"id": "c800", "name": "Makima"},
@@ -48,7 +50,7 @@ class StageBase(unittest.TestCase):
 
     def tearDown(self):
         sys.stdout = self._stdout
-        stage.workshop_dir, stage.l2d_index, stage.slotlib.download = self._saved
+        stage.workshop_dir, stage.l2d_index, l2d_pack.download = self._saved
         if self._env is None:
             os.environ.pop("XDG_CONFIG_HOME", None)
         else:
@@ -61,16 +63,16 @@ class ResolveTest(StageBase):
         self.assertEqual(stage.resolve("c010", index), "c010")
         self.assertEqual(stage.resolve("rapi", index), "c010")
         self.assertEqual(stage.resolve("Makima Coat Off", index), "c800_01")
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(PackError):
             stage.resolve("maki", index)  # coincide con varios
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(PackError):
             stage.resolve("nadie", index)
 
 
 class InstallTest(StageBase):
     def test_add_installs_characters_manifest_and_project(self):
         packs = {"c010": make_pack("c010"), "c195": make_pack("c195", version=b"4.1.20")}
-        stage.slotlib.download = lambda code: packs[code]
+        l2d_pack.download = lambda code: packs[code]
         stage.add(["c010", "c195"])
 
         manifest = stage.read_manifest()
@@ -96,7 +98,7 @@ class InstallTest(StageBase):
             self.assertTrue(os.path.isfile(os.path.join(project_dir, name)), name)
 
     def test_remove_updates_manifest_and_files(self):
-        stage.slotlib.download = lambda code: make_pack(code)
+        l2d_pack.download = lambda code: make_pack(code)
         stage.add(["c010", "c800"])
         stage.remove(["c800"])
         self.assertEqual(list(stage.read_manifest()["characters"]), ["c010"])
@@ -109,15 +111,15 @@ class InstallTest(StageBase):
             "otherdir": make_pack("c010", extra={"other\\x.png": b"x"}),
         }
         for name, data in bad.items():
-            stage.slotlib.download = lambda code, data=data: data
-            with self.assertRaises(SystemExit, msg=name):
+            l2d_pack.download = lambda code, data=data: data
+            with self.assertRaises(PackError, msg=name):
                 stage.add(["c010"])
         self.assertEqual(stage.read_manifest()["characters"], {})
 
     def test_missing_runtime_is_explained(self):
         for name in stage.RUNTIME_FILES:
             os.remove(os.path.join(self.workshop, "111", name))
-        with self.assertRaises(SystemExit) as ctx:
+        with self.assertRaises(PackError) as ctx:
             stage.install_wallpaper()
         self.assertIn("Nikke", str(ctx.exception))
 

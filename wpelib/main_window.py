@@ -30,6 +30,7 @@ from .ui import icon_button, open_in_steam, apply_css, WallpaperCard, CARD_SIZE
 from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
 from .properties_window import PropertiesDialog
+from .stage_window import StageCharactersWindow
 from .repair import attempt_repair, attempt_repair_all
 
 TABS = ["Todos", "Favoritos", "Recientes", "Animados", "Ocultos"]
@@ -461,6 +462,8 @@ class PickerWindow(Gtk.Window):
         box.pack_start(Gtk.Separator(), False, False, 2)
         add_action("Desactivar fondos web", "dialog-password-symbolic", self._disable_web_wallpapers)
         add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
+        box.pack_start(Gtk.Separator(), False, False, 2)
+        add_action("Nikke Stage: personajes...", "avatar-default-symbolic", self._open_stage_characters)
         box.show_all()
         popover.add(box)
 
@@ -1438,6 +1441,15 @@ class PickerWindow(Gtk.Window):
             self.status_label.set_text("Ya estaba en la rotacion de esa pantalla")
 
     # -- Ventanas secundarias --------------------------------------------------
+
+    def _open_stage_characters(self, _button=None):
+        """Ventana para descargar y quitar los personajes del wallpaper Nikke Stage."""
+        existing = getattr(self, "stage_window", None)
+        if existing is not None:
+            existing.present()
+            return
+        self.stage_window = StageCharactersWindow(on_done=self.on_refresh_clicked)
+        self.stage_window.connect("destroy", lambda *_: setattr(self, "stage_window", None))
 
     def on_open_workshop_browser(self, button):
         if self.workshop_window is None or not self.workshop_window.get_visible():
