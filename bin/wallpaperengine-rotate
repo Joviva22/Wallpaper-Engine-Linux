@@ -21,7 +21,7 @@ flock -n 9 || { echo "wallpaperengine-rotate ya esta en ejecucion" >&2; exit 0; 
 
 while true; do
     if [[ -f "$PAUSE_FILE" ]]; then
-        sleep "$POLL_SECONDS"
+        sleep "$POLL_SECONDS" 9>&-
         continue
     fi
     if [[ -f "$PLAYLISTS_FILE" ]]; then
@@ -43,7 +43,7 @@ while true; do
         ' "$PLAYLISTS_FILE" 2>/dev/null)
         while IFS=$'\t' read -r screen next_idx id; do
             [[ -z "$screen" ]] && continue
-            "$APPLY" "$screen=$id" >/dev/null 2>&1 </dev/null
+            "$APPLY" "$screen=$id" >/dev/null 2>&1 </dev/null 9>&-
 
             # Se relee el archivo justo antes de escribir para no pisar cambios de la GUI.
             tmp=$(jq --arg s "$screen" --argjson i "$next_idx" --argjson t "$now" \
@@ -51,5 +51,5 @@ while true; do
             echo "$tmp" > "$PLAYLISTS_FILE.tmp.$$" && mv -f "$PLAYLISTS_FILE.tmp.$$" "$PLAYLISTS_FILE"
         done <<< "$due"
     fi
-    sleep "$POLL_SECONDS"
+    sleep "$POLL_SECONDS" 9>&-
 done
