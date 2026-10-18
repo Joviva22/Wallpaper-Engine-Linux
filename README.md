@@ -244,13 +244,12 @@ atómicas y las reparaciones se coordinan mediante locks. Vuelve a aplicar el fo
 para cargar los recursos corregidos.
 
 Una reparación no certifica que todo el fondo funcione. Quedan casos que necesitan cambios
-del motor: luces, texturas configurables, funciones de SceneScript y algunas escenas con
-proyección incompatible. No se sustituyen recursos arbitrariamente para ocultar esos fallos.
+del motor: luces volumétricas y sombras, texturas configurables, parte de SceneScript y
+algunas escenas con efectos incompatibles. No se sustituyen recursos arbitrariamente para ocultar esos fallos.
 
-Puedes consultar [el informe de shaders](audit/compatibility/SHADERS.md) y
-[los casos de scripts](audit/scripts/README.md) para ver las comprobaciones realizadas,
-las limitaciones y los fallos pendientes. Los informes describen la versión probada;
-no garantizan el resultado de cualquier fondo o versión futura.
+Las comprobaciones, limitaciones y fallos pendientes se documentan en el trabajo de
+auditoría local (no incluido en el repositorio). Una reparación describe la versión probada y
+no garantiza el resultado de cualquier fondo o versión futura.
 
 ## Configuración y registros
 
