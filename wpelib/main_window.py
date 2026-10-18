@@ -1025,7 +1025,13 @@ class PickerWindow(Gtk.Window):
             for card_wid, card in self.cards.items():
                 card.set_badge(self._badge_for(card_wid))
             self._sync_speed_combo()
-            if state.get("state") in ("failed", "blocked"):
+            if state.get("state") == "rolled_back":
+                failed_title = self.items_by_id.get(state.get("failed_id"), {}).get("title", state.get("failed_id"))
+                good_title = self.items_by_id.get(wid, {}).get("title", wid)
+                self.status_label.set_text(
+                    f"{failed_title} falló en {monitor}; se restauró {good_title}. Motivo: {state.get('detail', '')[:200]}")
+                self._show_rollback_dialog(monitor, failed_title, good_title, state.get("detail", ""))
+            elif state.get("state") in ("failed", "blocked"):
                 title = self.items_by_id.get(wid, {}).get("title", wid)
                 self.status_label.set_text(f"No se pudo reproducir {title} en {monitor}: {state.get('detail', '')[:300]}")
             elif state.get("state") == "running":
@@ -1035,6 +1041,15 @@ class PickerWindow(Gtk.Window):
                 self.flowbox.invalidate_filter()
                 self.flowbox.invalidate_sort()
         return True
+
+    def _show_rollback_dialog(self, monitor, failed_title, good_title, detail):
+        dialog = Gtk.MessageDialog(transient_for=self, modal=False, message_type=Gtk.MessageType.WARNING,
+                                   text=f"«{failed_title}» no se pudo reproducir")
+        dialog.format_secondary_text(
+            f"Se ha restaurado el fondo anterior en {monitor}: «{good_title}».\n\nMotivo: {detail.strip()[:500] or 'el motor terminó de forma inesperada'}")
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda d, _r: d.destroy())
+        dialog.show_all()
 
     def get_selected_ids(self):
         return [child.get_child().wid for child in self.flowbox.get_selected_children()]

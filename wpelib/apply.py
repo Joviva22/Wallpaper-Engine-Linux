@@ -21,6 +21,7 @@ import select
 import uuid
 import subprocess
 import sys
+import threading
 import time
 
 from . import config
@@ -28,6 +29,8 @@ from .config import FileLock, atomic_write_json, load_json
 from .engine_log import append_bounded, capture
 
 MAX_LOG_BYTES = 5 * 1024 * 1024
+# Segundos que un fondo debe seguir vivo para considerarlo "el ultimo que funcionaba" de su pantalla.
+STABLE_SECONDS = 15
 # Firmas de errores de datos de escena/proyecto que repair.py sabe corregir.
 REPAIRABLE_LOG_PATTERN = re.compile(
     r"type_error\.302|Combo property must have a value|Projection must have (?:a )?(?:width|height)",
@@ -267,11 +270,28 @@ def try_auto_repair(wid, logfile, log_offset, repairable=None):
     return changed
 
 
-def write_status(screen, wid, state, detail="", returncode=None):
+def write_status(screen, wid, state, detail="", returncode=None, **extra):
     atomic_write_json(_path(f"status_{screen}.json"), {
         "id": wid, "state": state, "detail": detail.replace("\x00", "")[-4000:],
-        "returncode": returncode, "token": uuid.uuid4().hex,
+        "returncode": returncode, "token": uuid.uuid4().hex, **extra,
     })
+
+
+def last_good_file():
+    return _path("last_good.json")
+
+
+def get_last_good(screen):
+    """Ultimo wallpaper que estuvo STABLE_SECONDS funcionando en esa pantalla (o None)."""
+    value = load_json(last_good_file(), {}).get(screen)
+    return value if isinstance(value, str) and ID_RE.match(value) else None
+
+
+def mark_last_good(screen, wid):
+    with _Lock(_path("last_good.lock")):
+        data = load_json(last_good_file(), {})
+        data[screen] = wid
+        atomic_write_json(last_good_file(), data)
 
 
 def disable_core_dumps():
@@ -279,7 +299,7 @@ def disable_core_dumps():
 
 
 def watch(screen, wid, proc, logfile, log_offset, allow_repair=True,
-          evidence=None, on_started=None):
+          evidence=None, on_started=None, fallback=True):
     returncode = proc.wait()
     with _Lock(_path(f"lock_{screen}.lock")):
         if _read_pid(pid_file(screen)) != proc.pid:
@@ -290,9 +310,13 @@ def watch(screen, wid, proc, logfile, log_offset, allow_repair=True,
         evidence['crashed'] if evidence is not None else log_has_crash(logfile, log_offset))
     repairable = evidence['repairable'] if evidence is not None else None
     if crashed and allow_repair and try_auto_repair(wid, logfile, log_offset, repairable):
-        restart_screen(screen, wid, allow_repair=False, on_started=on_started, expected_pid=proc.pid)
+        restart_screen(screen, wid, allow_repair=False, on_started=on_started, expected_pid=proc.pid,
+                       fallback=fallback)
         return
     detail = evidence['tail'] if evidence is not None else _log_text(logfile, log_offset)[-4000:]
+    good = get_last_good(screen) if (crashed and fallback) else None
+    if good == wid or (good and not os.path.isdir(os.path.join(config.WORKSHOP_DIR, good))):
+        good = None
     with _Lock(_path(f"lock_{screen}.lock")):
         # Revalidar tras una reparación/lectura: no pisar el estado de otro motor.
         if _read_pid(pid_file(screen)) != proc.pid:
@@ -302,12 +326,20 @@ def watch(screen, wid, proc, logfile, log_offset, allow_repair=True,
         record_result(screen, wid, crashed, returncode, detail)
         state = "failed" if crashed else "stopped"
         message = f"El motor terminó con código {returncode}. " + detail
-        write_status(screen, wid, state, message, returncode)
+        if not good:
+            write_status(screen, wid, state, message, returncode)
+    if good:
+        # El fondo nuevo fallo: se avisa de por que y se restaura el ultimo que funcionaba. El estado
+        # "rolled_back" lo escribe el relanzamiento cuando el fondo anterior ya esta en marcha.
+        if on_started:
+            on_started(False, message + f"\nSe restaura el fondo anterior ({good}).")
+        restart_screen(screen, good, allow_repair=False, fallback=False, rollback=(wid, message, returncode))
+        return
     if on_started:
         on_started(False, message)
 
 
-def restart_screen(screen, wid, allow_repair=True, on_started=None, expected_pid=None):
+def restart_screen(screen, wid, allow_repair=True, on_started=None, expected_pid=None, fallback=True, rollback=None):
     """Lanza el motor, confirma que permanece vivo y recoge su salida hasta el final."""
     reason = web_block_reason(wid)
     if reason:
@@ -346,13 +378,26 @@ def restart_screen(screen, wid, allow_repair=True, on_started=None, expected_pid
             if _read_pid(pid_file(screen)) != proc.pid:
                 return
             save_assignments([(screen, wid)])
-            write_status(screen, wid, "running")
+            if rollback:
+                failed_id, reason, failed_code = rollback
+                write_status(screen, wid, "rolled_back", reason, failed_code, failed_id=failed_id)
+            else:
+                write_status(screen, wid, "running")
             if on_started:
                 on_started(True, "")
 
+        def confirm_stable():
+            # Solo cuenta como "ultimo que funcionaba" si sigue vivo tras STABLE_SECONDS.
+            if proc.poll() is None and _read_pid(pid_file(screen)) == proc.pid:
+                mark_last_good(screen, wid)
+
+        timer = threading.Timer(STABLE_SECONDS, confirm_stable)
+        timer.daemon = True
+        timer.start()
+
     evidence = capture(proc, logfile, MAX_LOG_BYTES, CRASH_LOG_PATTERN,
                        REPAIRABLE_LOG_PATTERN, ready)
-    watch(screen, wid, proc, logfile, 0, allow_repair, evidence, on_started)
+    watch(screen, wid, proc, logfile, 0, allow_repair, evidence, on_started, fallback)
 
 
 def _detach_and_run(screen, wid):

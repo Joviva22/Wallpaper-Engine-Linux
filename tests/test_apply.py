@@ -284,6 +284,71 @@ class AutoRepairTest(Base):
         self.assertIn("123", self.known_bad())
 
 
+class RollbackTest(Base):
+    CRASH_456 = 'case "$*" in *"/456"*) ulimit -c 0; kill -SEGV $$;; esac\nsleep 30'
+
+    def setUp(self):
+        super().setUp()
+        self._stable = apply.STABLE_SECONDS
+        apply.STABLE_SECONDS = 0.3
+        self.write_engine(self.CRASH_456)
+
+    def tearDown(self):
+        apply.STABLE_SECONDS = self._stable
+        super().tearDown()
+
+    def start(self, screen, wid):
+        t = threading.Thread(target=apply.restart_screen, args=(screen, wid), daemon=True)
+        t.start()
+        return t
+
+    def status(self, screen="eDP-1"):
+        return config.load_json(os.path.join(config.CONF_DIR, f"status_{screen}.json"), {})
+
+    def test_failed_new_wallpaper_restores_the_last_good_one(self):
+        self.start("eDP-1", "123")
+        self.assertTrue(wait_for(lambda: apply.get_last_good("eDP-1") == "123"))
+        first_pid = apply._read_pid(apply.pid_file("eDP-1"))
+        self.start("eDP-1", "456")
+        self.assertTrue(wait_for(lambda: self.status().get("state") == "rolled_back"))
+        status = self.status()
+        self.assertEqual((status["id"], status["failed_id"]), ("123", "456"))
+        self.assertTrue(status["detail"])
+        self.assertIn("456", self.known_bad())
+        self.assertEqual(config.load_json(config.CURRENT_FILE, {}).get("eDP-1"), "123")
+        pid = apply._read_pid(apply.pid_file("eDP-1"))
+        self.assertTrue(apply._alive(pid))
+        self.assertNotEqual(pid, first_pid)
+        self.assertEqual(apply.get_last_good("eDP-1"), "123")
+
+    def test_without_a_previous_good_wallpaper_nothing_is_restored(self):
+        t = self.start("eDP-1", "456")
+        t.join(10)
+        self.assertEqual(self.status()["state"], "failed")
+        self.assertIsNone(apply.get_last_good("eDP-1"))
+        self.assertFalse(apply._alive(apply._read_pid(apply.pid_file("eDP-1")) or 0))
+
+    def test_unstable_wallpaper_is_not_remembered(self):
+        apply.STABLE_SECONDS = 30
+        self.write_engine("exit 0")
+        self.start("eDP-1", "123").join(10)
+        self.assertIsNone(apply.get_last_good("eDP-1"))
+
+    def test_no_rollback_loop_when_the_restored_one_also_fails(self):
+        apply.mark_last_good("eDP-1", "123")
+        self.write_engine("ulimit -c 0; kill -SEGV $$")
+        t = self.start("eDP-1", "456")
+        t.join(20)
+        self.assertFalse(t.is_alive())
+        self.assertEqual(sorted(self.known_bad()), ["123", "456"])
+
+    def test_rollback_to_a_removed_wallpaper_is_skipped(self):
+        apply.mark_last_good("eDP-1", "999")  # la carpeta no existe
+        t = self.start("eDP-1", "456")
+        t.join(10)
+        self.assertEqual(self.status()["state"], "failed")
+
+
 class EndToEndTest(unittest.TestCase):
     def test_script_detaches_and_records(self):
         home = tempfile.mkdtemp()
