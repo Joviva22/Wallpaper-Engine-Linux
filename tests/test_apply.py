@@ -43,7 +43,10 @@ class Base(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
-        self.saved = {}
+        self.saved = {"PATCHED_ENGINE_DIR": config.PATCHED_ENGINE_DIR}
+        config.PATCHED_ENGINE_DIR = os.path.join(self.tmp, "patched-engine")
+        self._engine_executable = config.engine_executable
+        config.engine_executable = lambda: "linux-wallpaperengine"
         old = config.CONF_DIR
         new = os.path.join(self.tmp, "conf")
         os.makedirs(new)
@@ -68,6 +71,7 @@ class Base(unittest.TestCase):
         config._SPEED_SUPPORTED = None
 
     def tearDown(self):
+        config.engine_executable = self._engine_executable
         os.environ["PATH"] = self._path
         for name, val in self.saved.items():
             setattr(config, name, val)
@@ -170,7 +174,7 @@ class CrashClassificationTest(unittest.TestCase):
         self.assertFalse(apply.returncode_is_crash(-signal.SIGTERM))
         self.assertFalse(apply.returncode_is_crash(143))
         self.assertFalse(apply.returncode_is_crash(0))
-        self.assertFalse(apply.returncode_is_crash(1))
+        self.assertTrue(apply.returncode_is_crash(1))
 
     def test_log_pattern_only_after_offset(self):
         path = os.path.join(tempfile.mkdtemp(), "l.log")

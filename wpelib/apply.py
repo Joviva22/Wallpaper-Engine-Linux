@@ -12,21 +12,26 @@ Por cada pantalla se lanza un proceso "vigilante" desacoplado (fork + setsid) qu
 
 Uso: wallpaperengine-apply PANTALLA=ID [PANTALLA=ID ...]"""
 import json
+import math
 import os
 import re
 import signal
+import resource
+import select
+import uuid
 import subprocess
 import sys
 import time
 
 from . import config
 from .config import FileLock, atomic_write_json, load_json
+from .engine_log import append_bounded, capture
 
 MAX_LOG_BYTES = 5 * 1024 * 1024
 # Firma del bug de formato conocido que repair.py sabe corregir (campo numerico guardado
 # como cadena en scene.json, p.ej. "padding": "32 32").
 REPAIRABLE_LOG_PATTERN = re.compile(r"type_error\.302")
-CRASH_LOG_PATTERN = re.compile(r"terminate called|Segmentation fault|Aborted \(core dumped\)")
+CRASH_LOG_PATTERN = re.compile(r"terminate called|Segmentation fault|Aborted \(core dumped\)|pure virtual method called")
 # Terminaciones por senal que NO son un crash del motor (parada o cambio deliberado).
 NON_CRASH_SIGNALS = {signal.SIGTERM, signal.SIGKILL, signal.SIGINT, signal.SIGHUP}
 ID_RE = re.compile(r"^[0-9]+$")
@@ -80,7 +85,7 @@ def speed_args(screen):
     """--speed solo existe en un linux-wallpaperengine parcheado: un motor sin el
     flag abortaria con "argumento desconocido", asi que se omite si no esta."""
     speed = config.load_speed().get(screen, 1.0)
-    if isinstance(speed, (int, float)) and not isinstance(speed, bool) and speed != 1 \
+    if isinstance(speed, (int, float)) and not isinstance(speed, bool) and math.isfinite(speed) and 0.25 <= speed <= 4 and speed != 1 \
             and config.engine_supports_speed():
         return ["--speed", str(speed)]
     return []
@@ -96,8 +101,8 @@ def find_libcef():
     """Ruta de libcef.so junto al motor instalado (o None). El paquete instala un
     wrapper en /usr/bin que hace `cd <dir>`; si no, se prueba junto al binario."""
     import shutil
-    exe = shutil.which("linux-wallpaperengine")
-    candidates = []
+    exe = shutil.which(config.engine_executable())
+    candidates = [config.PATCHED_ENGINE_DIR]
     if exe:
         try:
             with open(exe, encoding="utf-8", errors="ignore") as f:
@@ -130,7 +135,7 @@ def engine_env(wid):
 
 def engine_command(screen, wid):
     return [
-        "linux-wallpaperengine", "--assets-dir", config.ASSETS_DIR, "--fps", "30",
+        config.engine_executable(), "--assets-dir", config.ASSETS_DIR, "--fps", "30",
         "--screen-root", screen, "--bg", os.path.join(config.WORKSHOP_DIR, wid),
         "--scaling", scaling_for(screen), "--clamp", "border",
         *audio_args(screen), *property_args(wid), *speed_args(screen),
@@ -198,7 +203,7 @@ def returncode_is_crash(returncode):
         return -returncode not in NON_CRASH_SIGNALS
     if returncode >= 128:
         return (returncode - 128) not in NON_CRASH_SIGNALS
-    return False
+    return returncode != 0
 
 
 def _log_text(logfile, offset):
@@ -218,97 +223,151 @@ def log_is_repairable(logfile, offset):
     return bool(REPAIRABLE_LOG_PATTERN.search(_log_text(logfile, offset)))
 
 
-def record_result(screen, wid, crashed):
+def record_result(screen, wid, crashed, returncode=None, detail=""):
     from datetime import datetime
     with _Lock(_path("known_bad.lock")):
         current = load_json(config.KNOWN_BAD_FILE, {})
         if crashed:
-            current[wid] = {"screen": screen, "detected_at": datetime.now().astimezone().isoformat(timespec="seconds")}
+            current[wid] = {"screen": screen, "detected_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                            "returncode": returncode, "detail": detail[-4000:]}
         else:
             current.pop(wid, None)
         atomic_write_json(config.KNOWN_BAD_FILE, current)
 
 
-def try_auto_repair(wid, logfile, log_offset):
+def try_auto_repair(wid, logfile, log_offset, repairable=None):
     """Si el crash tiene la firma de un bug de formato que repair.py sabe corregir,
     lo repara (con backup scene.pkg.bak_original). Devuelve True si cambio algo."""
-    if not log_is_repairable(logfile, log_offset):
+    if not (log_is_repairable(logfile, log_offset) if repairable is None else repairable):
         return False
     from . import repair
     changed, message = repair.attempt_repair(wid)
-    with open(logfile, "a") as f:
-        f.write(f"[wallpaperengine-picker] auto-reparacion de {wid}: {message}\n")
+    append_bounded(logfile, f"[wallpaperengine-picker] auto-reparacion de {wid}: {message}\n".encode(), MAX_LOG_BYTES)
     return changed
 
 
-def watch(screen, wid, proc, logfile, log_offset, allow_repair=True):
+def write_status(screen, wid, state, detail="", returncode=None):
+    atomic_write_json(_path(f"status_{screen}.json"), {
+        "id": wid, "state": state, "detail": detail.replace("\x00", "")[-4000:],
+        "returncode": returncode, "token": uuid.uuid4().hex,
+    })
+
+
+def disable_core_dumps():
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+
+
+def watch(screen, wid, proc, logfile, log_offset, allow_repair=True,
+          evidence=None, on_started=None):
     returncode = proc.wait()
-    if _read_pid(pid_file(screen)) != proc.pid:
-        return  # alguien (otra llamada a apply) lo reemplazo a proposito
-    crashed = returncode_is_crash(returncode) or log_has_crash(logfile, log_offset)
-    if crashed and allow_repair and try_auto_repair(wid, logfile, log_offset):
-        # Reparado: se reintenta una sola vez (allow_repair=False evita bucles).
-        restart_screen(screen, wid, allow_repair=False)
+    with _Lock(_path(f"lock_{screen}.lock")):
+        if _read_pid(pid_file(screen)) != proc.pid:
+            if on_started:
+                on_started(False, "La selección fue reemplazada por otra.")
+            return
+    crashed = returncode_is_crash(returncode) or (
+        evidence['crashed'] if evidence is not None else log_has_crash(logfile, log_offset))
+    repairable = evidence['repairable'] if evidence is not None else None
+    if crashed and allow_repair and try_auto_repair(wid, logfile, log_offset, repairable):
+        restart_screen(screen, wid, allow_repair=False, on_started=on_started, expected_pid=proc.pid)
         return
-    record_result(screen, wid, crashed)
+    detail = evidence['tail'] if evidence is not None else _log_text(logfile, log_offset)[-4000:]
+    with _Lock(_path(f"lock_{screen}.lock")):
+        # Revalidar tras una reparación/lectura: no pisar el estado de otro motor.
+        if _read_pid(pid_file(screen)) != proc.pid:
+            if on_started:
+                on_started(False, "La selección fue reemplazada por otra.")
+            return
+        record_result(screen, wid, crashed, returncode, detail)
+        state = "failed" if crashed else "stopped"
+        message = f"El motor terminó con código {returncode}. " + detail
+        write_status(screen, wid, state, message, returncode)
+    if on_started:
+        on_started(False, message)
 
 
-def restart_screen(screen, wid, allow_repair=True):
-    """Cuerpo del vigilante de una pantalla. Corre en un proceso desacoplado."""
+def restart_screen(screen, wid, allow_repair=True, on_started=None, expected_pid=None):
+    """Lanza el motor, confirma que permanece vivo y recoge su salida hasta el final."""
     logfile = log_file(screen)
-    lock = _Lock(_path(f"lock_{screen}.lock"))
-    lock.__enter__()
-    try:
-        # Sin el lock, dos llamadas casi simultaneas para la misma pantalla podian leer
-        # el mismo pidfile "viejo" y acabar con varios motores vivos a la vez.
+    with _Lock(_path(f"lock_{screen}.lock")):
+        if expected_pid is not None and _read_pid(pid_file(screen)) != expected_pid:
+            if on_started:
+                on_started(False, "La selección fue reemplazada durante la reparación.")
+            return
         stop_previous(screen)
-
-        # Rotar el log si supera 5 MB (se conserva uno anterior como .1).
+        # Se conserva la rotación inicial para logs antiguos de tamaño excesivo.
+        if os.path.exists(logfile) and os.path.getsize(logfile) >= MAX_LOG_BYTES:
+            os.replace(logfile, logfile + ".1")
+        append_bounded(logfile, f"[picker] Inicio {screen}={wid}\n".encode(), MAX_LOG_BYTES)
         try:
-            if os.path.getsize(logfile) > MAX_LOG_BYTES:
-                os.replace(logfile, logfile + ".1")
-        except OSError:
-            pass
-        try:
-            log_offset = os.path.getsize(logfile)
-        except OSError:
-            log_offset = 0
-
-        cmd = engine_command(screen, wid)
-        with open(logfile, "ab") as log:
-            try:
-                proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log,
-                                        stderr=subprocess.STDOUT, env=engine_env(wid))
-            except OSError as e:
-                log.write(f"No se pudo lanzar linux-wallpaperengine: {e}\n".encode())
-                return
+            proc = subprocess.Popen(engine_command(screen, wid), stdin=subprocess.DEVNULL,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    env=engine_env(wid), preexec_fn=disable_core_dumps)
+        except OSError as exc:
+            detail = f"No se pudo lanzar linux-wallpaperengine: {exc}"
+            append_bounded(logfile, (detail + "\n").encode(), MAX_LOG_BYTES)
+            record_result(screen, wid, True, None, detail)
+            write_status(screen, wid, "failed", detail)
+            if on_started:
+                on_started(False, detail)
+            return
         with open(pid_file(screen), "w") as f:
             f.write(str(proc.pid))
-    finally:
-        lock.release()
 
-    # Fuera del lock: esperar puede tardar indefinidamente.
-    watch(screen, wid, proc, logfile, log_offset, allow_repair)
+    def ready():
+        with _Lock(_path(f"lock_{screen}.lock")):
+            if _read_pid(pid_file(screen)) != proc.pid:
+                return
+            save_assignments([(screen, wid)])
+            write_status(screen, wid, "running")
+            if on_started:
+                on_started(True, "")
+
+    evidence = capture(proc, logfile, MAX_LOG_BYTES, CRASH_LOG_PATTERN,
+                       REPAIRABLE_LOG_PATTERN, ready)
+    watch(screen, wid, proc, logfile, 0, allow_repair, evidence, on_started)
 
 
 def _detach_and_run(screen, wid):
+    read_fd, write_fd = os.pipe()
     pid = os.fork()
     if pid:
-        return
+        os.close(write_fd)
+        try:
+            if not select.select([read_fd], [], [], 20)[0]:
+                return False, "No se recibió confirmación de arranque a tiempo."
+            payload = json.loads(os.read(read_fd, 8192).decode())
+            return payload['ok'], payload['detail']
+        except (ValueError, OSError, KeyError):
+            return False, "El vigilante terminó sin confirmar el arranque."
+        finally:
+            os.close(read_fd)
+    os.close(read_fd)
+    sent = False
+
+    def report(ok, detail):
+        nonlocal sent
+        if sent:
+            return
+        sent = True
+        try:
+            os.write(write_fd, json.dumps({"ok": ok, "detail": detail[-800:]}, ensure_ascii=False).encode())
+        except OSError:
+            pass
+        finally:
+            os.close(write_fd)
+
     try:
         os.setsid()
         devnull = os.open(os.devnull, os.O_RDWR)
         for fd in (0, 1, 2):
             os.dup2(devnull, fd)
-        restart_screen(screen, wid)
-    except BaseException:
-        import traceback
-        try:
-            with open(log_file(screen), "a") as f:
-                traceback.print_exc(file=f)
-        except OSError:
-            pass
+        os.close(devnull)
+        restart_screen(screen, wid, on_started=report)
+    except BaseException as exc:
+        report(False, f"Error del vigilante: {exc}")
     finally:
+        report(False, "El motor terminó antes de confirmar el arranque.")
         os._exit(0)
 
 
@@ -352,8 +411,11 @@ def main(argv=None):
         print(error, file=sys.stderr)
         return 1
     os.makedirs(config.CONF_DIR, exist_ok=True)
+    success = True
     for screen, wid in pairs:
         print(f"  {screen} -> {wid}", flush=True)
-        _detach_and_run(screen, wid)
-    save_assignments(pairs)
-    return 0
+        ok, detail = _detach_and_run(screen, wid)
+        if not ok:
+            success = False
+            print(f"{screen}: {detail}", file=sys.stderr)
+    return 0 if success else 1

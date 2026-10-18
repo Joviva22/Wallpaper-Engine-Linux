@@ -3,13 +3,14 @@ Sidebar de filtros (etiquetas/clasificacion/popularidad) + cuadricula de
 tarjetas (reutiliza WallpaperCard del panel principal) + panel de detalle a
 la derecha, siguiendo el mismo lenguaje visual que la ventana principal."""
 import threading
+import os
 
 import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf, GLib, Gdk
 
-from .config import CONFIG, save_config, THUMB_SIZE, load_known_bad, load_favorite_ids, save_favorite_ids
+from .config import CONFIG, save_config, THUMB_SIZE, WORKSHOP_THUMB_CACHE, load_known_bad, load_favorite_ids, save_favorite_ids
 from .steam_api import (
     SteamApiError, steam_api_search_multi, download_workshop_thumb, download_workshop_item,
     verify_workshop_download, format_size, KNOWN_TAGS, RATING_TAGS, POPULARITY_OPTIONS,
@@ -38,6 +39,8 @@ class WorkshopBrowserWindow(Gtk.Window):
         self.last_search = None
         self.page_cache = {}
         self.prefetching = set()
+        self._search_generation = 0
+        self.connect("destroy", self._cancel_searches)
         self._selected_wid = None
         self.placeholder_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, *THUMB_SIZE)
         self.placeholder_pixbuf.fill(0x2f3140ff)
@@ -305,6 +308,7 @@ class WorkshopBrowserWindow(Gtk.Window):
         if query and popularity_choice != "Mas votados (todo el tiempo)":
             self.status_label.set_text("Buscando (la popularidad por periodo se ignora al buscar por texto)...")
 
+        self._search_generation += 1
         self.last_search = {
             "api_key": api_key, "query": query, "required_tags": required_tags,
             "ratings": ratings, "query_type": query_type, "days": days,
@@ -332,9 +336,9 @@ class WorkshopBrowserWindow(Gtk.Window):
         self.prev_btn.set_sensitive(False)
         self.next_btn.set_sensitive(False)
         params = dict(self.last_search)
-        threading.Thread(target=self._search_thread, args=(params, page), daemon=True).start()
+        threading.Thread(target=self._search_thread, args=(params, page, self._search_generation), daemon=True).start()
 
-    def _search_thread(self, params, page):
+    def _search_thread(self, params, page, generation):
         try:
             total, results = steam_api_search_multi(
                 params["api_key"], params["query"],
@@ -343,13 +347,26 @@ class WorkshopBrowserWindow(Gtk.Window):
                 page=page, per_page=self.per_page,
             )
         except SteamApiError as e:
-            GLib.idle_add(self.status_label.set_text, str(e))
+            GLib.idle_add(self._search_error, generation, page, str(e))
             return
-        GLib.idle_add(self._populate_results, total, results, page)
+        GLib.idle_add(self._populate_results, total, results, page, generation)
 
-    def _populate_results(self, total, results, page):
+    def _cancel_searches(self, *_args):
+        self._search_generation += 1
+
+    def _search_error(self, generation, page, message):
+        if generation == self._search_generation and page == self.current_page:
+            self.status_label.set_text(message)
+        return False
+
+    def _populate_results(self, total, results, page, generation=None):
+        generation = self._search_generation if generation is None else generation
+        if generation != self._search_generation:
+            return False
         was_cached = page in self.page_cache
         self.page_cache[page] = (total, results)
+        if page != self.current_page:
+            return False
         self.results = results
         self.total_results = total
 
@@ -370,8 +387,8 @@ class WorkshopBrowserWindow(Gtk.Window):
 
             pixbuf = self.placeholder_pixbuf
             if preview_url:
-                thumb_path = download_workshop_thumb(wid, preview_url)
-                if thumb_path:
+                thumb_path = os.path.join(WORKSHOP_THUMB_CACHE, f"{wid}.png")
+                if os.path.isfile(thumb_path):
                     try:
                         pixbuf = GdkPixbuf.Pixbuf.new_from_file(thumb_path)
                     except Exception:
@@ -400,6 +417,7 @@ class WorkshopBrowserWindow(Gtk.Window):
             self.cards[wid] = card
 
         self.flowbox.show_all()
+        threading.Thread(target=self._thumbs_thread, args=(results, page, generation), daemon=True).start()
 
         total_pages = max(1, -(-total // self.per_page)) if total else 1
         cached_note = " (precargada)" if was_cached else ""
@@ -414,14 +432,36 @@ class WorkshopBrowserWindow(Gtk.Window):
             self._prefetch_page(page + 1)
         return False
 
+    def _thumbs_thread(self, results, page, generation):
+        for item in results:
+            if generation != self._search_generation or page != self.current_page:
+                return
+            wid = item.get("publishedfileid", "")
+            url = item.get("preview_url")
+            if url:
+                path = download_workshop_thumb(wid, url)
+                if path:
+                    GLib.idle_add(self._set_thumb, wid, path, page, generation)
+
+    def _set_thumb(self, wid, path, page, generation):
+        if generation != self._search_generation or page != self.current_page:
+            return False
+        card = self.cards.get(wid)
+        if card:
+            try:
+                card.set_pixbuf(GdkPixbuf.Pixbuf.new_from_file(path))
+            except Exception:
+                pass
+        return False
+
     def _prefetch_page(self, page):
         if page in self.page_cache or page in self.prefetching or not self.last_search:
             return
         self.prefetching.add(page)
         params = dict(self.last_search)
-        threading.Thread(target=self._prefetch_thread, args=(params, page), daemon=True).start()
+        threading.Thread(target=self._prefetch_thread, args=(params, page, self._search_generation), daemon=True).start()
 
-    def _prefetch_thread(self, params, page):
+    def _prefetch_thread(self, params, page, generation):
         try:
             total, results = steam_api_search_multi(
                 params["api_key"], params["query"],
@@ -430,20 +470,29 @@ class WorkshopBrowserWindow(Gtk.Window):
                 page=page, per_page=self.per_page,
             )
         except SteamApiError:
-            GLib.idle_add(self.prefetching.discard, page)
+            GLib.idle_add(self._prefetch_failed, page, generation)
             return
         for item in results:
+            if generation != self._search_generation:
+                return
             wid = item.get("publishedfileid", "")
             preview_url = item.get("preview_url", "")
             if preview_url:
                 download_workshop_thumb(wid, preview_url)
-        GLib.idle_add(self._store_prefetched, page, total, results)
+        GLib.idle_add(self._store_prefetched, page, total, results, generation)
 
-    def _store_prefetched(self, page, total, results):
+    def _prefetch_failed(self, page, generation):
+        if generation == self._search_generation:
+            self.prefetching.discard(page)
+        return False
+
+    def _store_prefetched(self, page, total, results, generation):
+        if generation != self._search_generation:
+            return False
         self.page_cache[page] = (total, results)
         self.prefetching.discard(page)
         if page == self.current_page:
-            self._populate_results(total, results, page)
+            self._populate_results(total, results, page, generation)
         return False
 
     def on_prev_page(self, button):

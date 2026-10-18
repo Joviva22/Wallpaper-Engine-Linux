@@ -1,59 +1,8 @@
-#!/usr/bin/env bash
-# Demonio de rotacion: cada N minutos, avanza al siguiente wallpaper de la lista
-# configurada para cada pantalla (playlists.json), llamando a wallpaperengine-apply.
-# Pensado para correr en segundo plano de forma indefinida desde el autostart.
-set -uo pipefail
-
-SCRIPT_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
-source "$SCRIPT_DIR/wallpaperengine-common.sh"
-
-CONF_DIR="$WPE_CONF_DIR"
-PLAYLISTS_FILE="$CONF_DIR/playlists.json"
-PAUSE_FILE="$CONF_DIR/rotation_paused"
-APPLY="$SCRIPT_DIR/wallpaperengine-apply"
-POLL_SECONDS=30
-
-mkdir -p "$CONF_DIR"
-
-# Instancia unica: si ya hay otro demonio de rotacion, salir.
-exec 9>"$CONF_DIR/rotate.lock"
-flock -n 9 || { echo "wallpaperengine-rotate ya esta en ejecucion" >&2; exit 0; }
-
-while true; do
-    if [[ -f "$PAUSE_FILE" ]]; then
-        sleep "$POLL_SECONDS" 9>&-
-        continue
-    fi
-    if [[ -f "$PLAYLISTS_FILE" ]]; then
-        now=$(date +%s)
-        # Un solo jq calcula que pantallas toca avanzar (screen<TAB>siguiente_indice<TAB>id).
-        # Intervalos o marcas de tiempo invalidos caen a sus valores por defecto; el
-        # intervalo minimo es 1 minuto.
-        due=$(jq -r --argjson now "$now" '
-            to_entries[]
-            | select(.value.enabled == true)
-            | .key as $s | .value as $v
-            | ($v.items // []) as $it
-            | select(($it | length) >= 1)
-            | ((($v.interval_minutes // 30) | tonumber? // 30) | if . < 1 then 1 else . end) as $iv
-            | (($v.last_switch // 0) | tonumber? // 0) as $last
-            | select(($now - $last) >= $iv * 60)
-            | ((($v.current_index // 0) | tonumber? // 0) + 1) % ($it | length) as $n
-            | [$s, $n, ($it[$n] | tostring)] | @tsv
-        ' "$PLAYLISTS_FILE" 2>/dev/null)
-        while IFS=$'\t' read -r screen next_idx id; do
-            [[ -z "$screen" ]] && continue
-            "$APPLY" "$screen=$id" >/dev/null 2>&1 </dev/null 9>&-
-
-            # Se relee el archivo justo antes de escribir para no pisar cambios de la GUI.
-            # Bajo el mismo lock (playlists.lock) que usa la GUI al guardar.
-            (
-                flock 8
-                tmp=$(jq --arg s "$screen" --argjson i "$next_idx" --argjson t "$now" \
-                    '.[$s].current_index = $i | .[$s].last_switch = $t' "$PLAYLISTS_FILE") || exit 0
-                echo "$tmp" > "$PLAYLISTS_FILE.tmp.$$" && mv -f "$PLAYLISTS_FILE.tmp.$$" "$PLAYLISTS_FILE"
-            ) 8>"$CONF_DIR/playlists.lock" 9>&-
-        done <<< "$due"
-    fi
-    sleep "$POLL_SECONDS" 9>&-
-done
+#!/usr/bin/env python3
+"""Lanzador del demonio de rotación."""
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+from wpelib.rotation import main
+if __name__ == '__main__':
+    main()

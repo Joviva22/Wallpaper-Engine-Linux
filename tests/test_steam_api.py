@@ -1,4 +1,6 @@
 import http.server
+import concurrent.futures
+from unittest.mock import patch
 import io
 import os
 import sys
@@ -53,6 +55,22 @@ class ThumbTest(unittest.TestCase):
     def test_too_big_rejected_without_leftovers(self):
         self.assertIsNone(steam_api.download_workshop_thumb("t_big", self.base + "/big"))
         self.assertFalse(os.path.exists(os.path.join(steam_api.WORKSHOP_THUMB_CACHE, "t_big.png.tmp")))
+
+    def test_concurrent_same_thumbnail_is_valid_and_atomic(self):
+        # Ambos trabajadores entran antes de que exista la caché.
+        barrier = threading.Barrier(2)
+        original = steam_api.urllib.request.urlopen
+        def synchronized(*args, **kwargs):
+            barrier.wait(timeout=5)
+            return original(*args, **kwargs)
+        with patch.object(steam_api.urllib.request, 'urlopen', side_effect=synchronized):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(lambda _: steam_api.download_workshop_thumb('concurrent', self.base + '/ok'), range(2)))
+        self.assertTrue(all(results))
+        self.assertEqual(results[0], results[1])
+        with Image.open(results[0]) as image:
+            image.verify()
+        self.assertFalse(any(n.startswith('.thumb-') for n in os.listdir(steam_api.WORKSHOP_THUMB_CACHE)))
 
     def test_non_http_scheme_rejected(self):
         self.assertIsNone(steam_api.download_workshop_thumb("t_file", "file:///etc/passwd"))

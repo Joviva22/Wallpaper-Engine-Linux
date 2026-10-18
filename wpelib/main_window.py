@@ -14,7 +14,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf, GLib, Gdk, Pango
 
 from .config import (
-    atomic_write_json,
+    atomic_write_json, load_json, CONF_DIR,
     load_wallpapers, detect_monitors, load_current_assignments, load_hidden_ids,
     save_hidden_ids, load_favorite_ids, save_favorite_ids, load_recent_ids, record_recent,
     load_known_bad, load_playlists, save_playlists, load_ui_state, save_ui_state,
@@ -238,6 +238,9 @@ class PickerWindow(Gtk.Window):
         self.connect("key-press-event", self.on_key_press)
         self.connect("destroy", self.on_destroy)
 
+        self._apply_seen = {mon: load_json(os.path.join(CONF_DIR, f"status_{mon}.json"), {}).get("token")
+                            for mon in self.monitors}
+        self._apply_poll = GLib.timeout_add(1000, self._poll_apply_status)
         GLib.idle_add(self.populate)
 
     # -- Construccion de la interfaz ------------------------------------------
@@ -388,7 +391,7 @@ class PickerWindow(Gtk.Window):
         current_speed = self.speed.get(self.target_monitor, DEFAULT_SPEED)
         idx = SPEED_OPTIONS.index(current_speed) if current_speed in SPEED_OPTIONS else 0
         self.speed_combo.set_active(idx)
-        self.speed_combo.set_tooltip_text("Velocidad de reproduccion (solo afecta a wallpapers de video)")
+        self.speed_combo.set_tooltip_text("Velocidad de reproducción de escenas y vídeos (requiere el motor parcheado)")
         self.speed_combo.connect("changed", self.on_speed_changed)
         if not engine_supports_speed():
             self.speed_combo.set_sensitive(False)
@@ -562,6 +565,7 @@ class PickerWindow(Gtk.Window):
             self.update_monitor_label(mon)
 
         self.rebuild_cards()
+        self._sync_speed_combo()
         self.status_label.set_text(f"{len(self.all_items)} wallpapers")
 
         if pending_thumb_ids:
@@ -868,6 +872,13 @@ class PickerWindow(Gtk.Window):
         self.speed_combo.handler_block_by_func(self.on_speed_changed)
         self.speed_combo.set_active(idx)
         self.speed_combo.handler_unblock_by_func(self.on_speed_changed)
+        wid = self.assignments.get(self.target_monitor)
+        kind = self.items_by_id.get(wid, {}).get("type")
+        supported = engine_supports_speed() and kind in ("Scene", "Video")
+        self.speed_combo.set_sensitive(supported)
+        self.speed_combo.set_tooltip_text(
+            "Velocidad de reproducción de escenas y vídeos" if supported else
+            "La velocidad requiere un fondo de escena/vídeo y un motor con --speed")
 
     def on_speed_changed(self, combo):
         idx = combo.get_active()
@@ -936,11 +947,6 @@ class PickerWindow(Gtk.Window):
 
     def assign_and_apply(self, wid, monitor=None):
         monitor = monitor or self.target_monitor
-        self.assignments[monitor] = wid
-        self.update_monitor_label(monitor)
-        if monitor == self.target_monitor:
-            self._refresh_assigned_badges()
-
         # Una asignacion manual desactiva cualquier rotacion activa en esa pantalla,
         # para que el demonio de rotacion no la sobrescriba mas tarde.
         playlists = load_playlists()
@@ -952,10 +958,31 @@ class PickerWindow(Gtk.Window):
         title = self.items_by_id.get(wid, {}).get("title", wid)
         self.status_label.set_text(f"Aplicando en {monitor}: {title}")
 
-        self.recent_ids = record_recent(wid)
-        if self.current_tab == "Recientes":
-            self.flowbox.invalidate_filter()
-        self.flowbox.invalidate_sort()
+    def _poll_apply_status(self):
+        for monitor in self.monitors:
+            state = load_json(os.path.join(CONF_DIR, f"status_{monitor}.json"), {})
+            token = state.get("token")
+            if not token or token == self._apply_seen.get(monitor):
+                continue
+            self._apply_seen[monitor] = token
+            wid = state.get("id")
+            self.assignments = load_current_assignments(self.monitors)
+            self.update_monitor_label(monitor)
+            self._refresh_assigned_badges()
+            self.known_bad = load_known_bad()
+            for card_wid, card in self.cards.items():
+                card.set_badge(self._badge_for(card_wid))
+            self._sync_speed_combo()
+            if state.get("state") == "failed":
+                title = self.items_by_id.get(wid, {}).get("title", wid)
+                self.status_label.set_text(f"No se pudo reproducir {title} en {monitor}: {state.get('detail', '')[:300]}")
+            elif state.get("state") == "running":
+                self.recent_ids = record_recent(wid)
+                title = self.items_by_id.get(wid, {}).get("title", wid)
+                self.status_label.set_text(f"Fondo iniciado en {monitor}: {title}")
+                self.flowbox.invalidate_filter()
+                self.flowbox.invalidate_sort()
+        return True
 
     def get_selected_ids(self):
         return [child.get_child().wid for child in self.flowbox.get_selected_children()]
@@ -1481,6 +1508,7 @@ class PickerWindow(Gtk.Window):
         })
 
     def on_destroy(self, widget):
+        GLib.source_remove(self._apply_poll)
         self.save_current_ui_state()
 
 

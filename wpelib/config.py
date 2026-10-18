@@ -403,11 +403,9 @@ def engine_supports_speed():
 
 
 def load_speed():
-    """Velocidad de reproduccion guardada por pantalla, { "PANTALLA": 1.0-4.0 }.
-    Requiere el flag --speed de linux-wallpaperengine (anadido en esta sesion,
-    parchea GLPlayer para llamar mpv_set_property(handle, "speed", ...) — solo
-    afecta a wallpapers de tipo Video o con video incrustado; en una escena sin
-    video no tiene ningun efecto. 1.0 (normal) si no hay nada guardado."""
+    """Velocidad guardada por pantalla. El parche 0002 acelera el reloj de escenas
+    y los vídeos MPV; el backend web y el audio independiente de escenas quedan
+    fuera. Sin --speed en el motor se conserva la reproducción normal."""
     return load_json(SPEED_FILE, {})
 
 

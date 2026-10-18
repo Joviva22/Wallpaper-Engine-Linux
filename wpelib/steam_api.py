@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import time
+import tempfile
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -115,8 +116,10 @@ def download_workshop_thumb(wid, url):
         return dest
     if urllib.parse.urlparse(url).scheme not in ("http", "https"):
         return None
-    tmp_path = dest + ".tmp"
+    tmp_path = None
     try:
+        fd, tmp_path = tempfile.mkstemp(dir=WORKSHOP_THUMB_CACHE, prefix=".thumb-", suffix=".tmp")
+        os.close(fd)
         # Con timeout y tope de tamano: una conexion colgada o un archivo enorme no
         # deben bloquear el hilo ni llenar el disco/memoria.
         with urllib.request.urlopen(url, timeout=15) as resp:
@@ -125,19 +128,22 @@ def download_workshop_thumb(wid, url):
             return None
         with open(tmp_path, "wb") as f:
             f.write(data)
-        img = Image.open(tmp_path).convert("RGB")
+        with Image.open(tmp_path) as source:
+            img = source.convert("RGB")
         img.thumbnail(THUMB_SIZE, Image.LANCZOS)
         canvas = Image.new("RGB", THUMB_SIZE, (30, 30, 30))
         x = (THUMB_SIZE[0] - img.width) // 2
         y = (THUMB_SIZE[1] - img.height) // 2
         canvas.paste(img, (x, y))
-        canvas.save(dest, "PNG")
+        canvas.save(tmp_path, "PNG")
+        os.replace(tmp_path, dest)
         return dest
     except Exception:
         return None
     finally:
         try:
-            os.remove(tmp_path)
+            if tmp_path is not None:
+                os.remove(tmp_path)
         except OSError:
             pass
 
