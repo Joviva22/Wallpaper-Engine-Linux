@@ -208,6 +208,49 @@ class WatcherTest(Base):
         self.assertLess(os.path.getsize(apply.log_file("eDP-1")), 1024)
 
 
+class AutoRepairTest(Base):
+    def setUp(self):
+        super().setUp()
+        from wpelib import repair
+        self.repair = repair
+        self._ws = repair.WORKSHOP_DIR
+        repair.WORKSHOP_DIR = config.WORKSHOP_DIR
+        import json
+        from tests.test_repair import build_pkg
+        scene = {"objects": [{"text": {}, "padding": "8.0 8.0"}]}
+        self.pkg = os.path.join(config.WORKSHOP_DIR, "123", "scene.pkg")
+        build_pkg(self.pkg, {"scene.json": json.dumps(scene).encode()})
+        # Motor falso: crashea con la firma del bug hasta que el .pkg esta reparado.
+        self.write_engine(
+            f'if [ ! -f "{self.pkg}.bak_original" ]; then '
+            'echo "what():  [json.exception.type_error.302] type must be number, but is string" >&2; '
+            'kill -ABRT $$; fi\nsleep 30')
+
+    def tearDown(self):
+        self.repair.WORKSHOP_DIR = self._ws
+        super().tearDown()
+
+    def test_crash_is_repaired_and_relaunched(self):
+        t = threading.Thread(target=apply.restart_screen, args=("eDP-1", "123"))
+        t.start()
+        self.assertTrue(wait_for(lambda: os.path.isfile(self.pkg + ".bak_original")))
+        self.assertTrue(wait_for(lambda: (lambda p: p and apply._is_engine(p) and apply._alive(p))(
+            apply._read_pid(apply.pid_file("eDP-1")))))
+        self.assertEqual(self.known_bad(), {})
+        with open(apply.log_file("eDP-1")) as f:
+            self.assertIn("auto-reparacion", f.read())
+        pid = apply._read_pid(apply.pid_file("eDP-1"))
+        os.kill(pid, signal.SIGTERM)
+        t.join(10)
+        self.assertFalse(t.is_alive())
+
+    def test_unrepairable_crash_is_recorded_without_loop(self):
+        self.write_engine('echo "type_error.302" >&2; kill -ABRT $$')
+        os.remove(self.pkg)  # nada que reparar
+        apply.restart_screen("eDP-1", "123")
+        self.assertIn("123", self.known_bad())
+
+
 class EndToEndTest(unittest.TestCase):
     def test_script_detaches_and_records(self):
         home = tempfile.mkdtemp()

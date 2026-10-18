@@ -23,6 +23,9 @@ from . import config
 from .config import FileLock, atomic_write_json, load_json
 
 MAX_LOG_BYTES = 5 * 1024 * 1024
+# Firma del bug de formato conocido que repair.py sabe corregir (campo numerico guardado
+# como cadena en scene.json, p.ej. "padding": "32 32").
+REPAIRABLE_LOG_PATTERN = re.compile(r"type_error\.302")
 CRASH_LOG_PATTERN = re.compile(r"terminate called|Segmentation fault|Aborted \(core dumped\)")
 # Terminaciones por senal que NO son un crash del motor (parada o cambio deliberado).
 NON_CRASH_SIGNALS = {signal.SIGTERM, signal.SIGKILL, signal.SIGINT, signal.SIGHUP}
@@ -156,14 +159,21 @@ def returncode_is_crash(returncode):
     return False
 
 
-def log_has_crash(logfile, offset):
+def _log_text(logfile, offset):
     try:
         with open(logfile, "rb") as f:
             f.seek(offset)
-            text = f.read().decode("utf-8", errors="replace")
+            return f.read().decode("utf-8", errors="replace")
     except OSError:
-        return False
-    return bool(CRASH_LOG_PATTERN.search(text))
+        return ""
+
+
+def log_has_crash(logfile, offset):
+    return bool(CRASH_LOG_PATTERN.search(_log_text(logfile, offset)))
+
+
+def log_is_repairable(logfile, offset):
+    return bool(REPAIRABLE_LOG_PATTERN.search(_log_text(logfile, offset)))
 
 
 def record_result(screen, wid, crashed):
@@ -177,15 +187,31 @@ def record_result(screen, wid, crashed):
         atomic_write_json(config.KNOWN_BAD_FILE, current)
 
 
-def watch(screen, wid, proc, logfile, log_offset):
+def try_auto_repair(wid, logfile, log_offset):
+    """Si el crash tiene la firma de un bug de formato que repair.py sabe corregir,
+    lo repara (con backup scene.pkg.bak_original). Devuelve True si cambio algo."""
+    if not log_is_repairable(logfile, log_offset):
+        return False
+    from . import repair
+    changed, message = repair.attempt_repair(wid)
+    with open(logfile, "a") as f:
+        f.write(f"[wallpaperengine-picker] auto-reparacion de {wid}: {message}\n")
+    return changed
+
+
+def watch(screen, wid, proc, logfile, log_offset, allow_repair=True):
     returncode = proc.wait()
     if _read_pid(pid_file(screen)) != proc.pid:
         return  # alguien (otra llamada a apply) lo reemplazo a proposito
     crashed = returncode_is_crash(returncode) or log_has_crash(logfile, log_offset)
+    if crashed and allow_repair and try_auto_repair(wid, logfile, log_offset):
+        # Reparado: se reintenta una sola vez (allow_repair=False evita bucles).
+        restart_screen(screen, wid, allow_repair=False)
+        return
     record_result(screen, wid, crashed)
 
 
-def restart_screen(screen, wid):
+def restart_screen(screen, wid, allow_repair=True):
     """Cuerpo del vigilante de una pantalla. Corre en un proceso desacoplado."""
     logfile = log_file(screen)
     lock = _Lock(_path(f"lock_{screen}.lock"))
@@ -220,7 +246,7 @@ def restart_screen(screen, wid):
         lock.release()
 
     # Fuera del lock: esperar puede tardar indefinidamente.
-    watch(screen, wid, proc, logfile, log_offset)
+    watch(screen, wid, proc, logfile, log_offset, allow_repair)
 
 
 def _detach_and_run(screen, wid):
