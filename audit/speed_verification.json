@@ -1,0 +1,15 @@
+{
+  "selected_engine": "/home/joviva/.local/opt/linux-wallpaperengine/bin/linux-wallpaperengine",
+  "speed_argument": "2.0",
+  "mpv_verified_2x": true,
+  "screenshot_exists": true,
+  "returncode": 0,
+  "artifacts": "/tmp/wpe-speed-verify-9q1at7gs",
+  "screenshot_has_color": true,
+  "screenshot_size": [
+    128,
+    128
+  ],
+  "evidence_log": "speed2.log",
+  "evidence_screenshot": "speed2.png"
+}
