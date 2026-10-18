@@ -86,6 +86,48 @@ def speed_args(screen):
     return []
 
 
+def project_type(wid):
+    data = load_json(os.path.join(config.WORKSHOP_DIR, wid, "project.json"), {})
+    kind = data.get("type") if isinstance(data, dict) else None
+    return kind.lower() if isinstance(kind, str) else ""
+
+
+def find_libcef():
+    """Ruta de libcef.so junto al motor instalado (o None). El paquete instala un
+    wrapper en /usr/bin que hace `cd <dir>`; si no, se prueba junto al binario."""
+    import shutil
+    exe = shutil.which("linux-wallpaperengine")
+    candidates = []
+    if exe:
+        try:
+            with open(exe, encoding="utf-8", errors="ignore") as f:
+                m = re.search(r"^cd\s+(\S+?);", f.read(4096), re.M)
+            if m:
+                candidates.append(m.group(1).strip("\"'"))
+        except OSError:
+            pass
+        candidates.append(os.path.dirname(os.path.realpath(exe)))
+    candidates.append("/opt/linux-wallpaperengine")
+    for d in candidates:
+        path = os.path.join(d, "libcef.so")
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def engine_env(wid):
+    """Entorno del motor. Los wallpapers de tipo web necesitan libcef.so cargado ANTES
+    que libc (LD_PRELOAD); si no, el motor muere al arrancar con SIGTRAP y el mensaje
+    "close symbol missing" (Almamu/linux-wallpaperengine#628). Solo se precarga para
+    wallpapers web, porque libcef.so pesa ~230 MB."""
+    env = os.environ.copy()
+    if project_type(wid) == "web":
+        libcef = find_libcef()
+        if libcef:
+            env["LD_PRELOAD"] = libcef + (os.pathsep + env["LD_PRELOAD"] if env.get("LD_PRELOAD") else "")
+    return env
+
+
 def engine_command(screen, wid):
     return [
         "linux-wallpaperengine", "--assets-dir", config.ASSETS_DIR, "--fps", "30",
@@ -236,7 +278,7 @@ def restart_screen(screen, wid, allow_repair=True):
         with open(logfile, "ab") as log:
             try:
                 proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log,
-                                        stderr=subprocess.STDOUT)
+                                        stderr=subprocess.STDOUT, env=engine_env(wid))
             except OSError as e:
                 log.write(f"No se pudo lanzar linux-wallpaperengine: {e}\n".encode())
                 return

@@ -120,6 +120,35 @@ class ArgsTest(Base):
         self.assertEqual(apply.audio_args("b"), ["--silent"])
 
 
+class EngineEnvTest(Base):
+    def make_project(self, wid, kind):
+        os.makedirs(os.path.join(config.WORKSHOP_DIR, wid), exist_ok=True)
+        config.atomic_write_json(os.path.join(config.WORKSHOP_DIR, wid, "project.json"),
+                                 {"title": "t", "type": kind})
+
+    def test_web_gets_ld_preload_scene_does_not(self):
+        libdir = os.path.join(self.tmp, "opt")
+        os.makedirs(libdir)
+        open(os.path.join(libdir, "libcef.so"), "w").close()
+        with open(os.path.join(self.bindir, "linux-wallpaperengine"), "w") as f:
+            f.write(f"#!/bin/bash\ncd {libdir}; exec true\n")
+        os.chmod(os.path.join(self.bindir, "linux-wallpaperengine"), 0o755)
+        self.make_project("123", "Web")
+        self.make_project("456", "scene")
+        self.assertEqual(apply.engine_env("123").get("LD_PRELOAD"), os.path.join(libdir, "libcef.so"))
+        self.assertNotIn("LD_PRELOAD", apply.engine_env("456"))
+        self.assertEqual(apply.project_type("999"), "")
+
+    def test_web_without_libcef_is_left_alone(self):
+        self.make_project("123", "web")
+        old = apply.find_libcef
+        apply.find_libcef = lambda: None
+        try:
+            self.assertNotIn("LD_PRELOAD", apply.engine_env("123"))
+        finally:
+            apply.find_libcef = old
+
+
 class ParseTest(Base):
     def test_valid(self):
         pairs, err = apply.parse_pairs(["eDP-1=123", "HDMI-A-1=456"])
