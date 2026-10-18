@@ -60,11 +60,13 @@ SPEED_FILE="$CONF_DIR/speed.json"
 
 # Argumentos de velocidad de reproduccion para ESTA pantalla ("--speed N", solo si
 # distinto de 1.0 para no pasar el flag innecesariamente). Requiere una version de
-# linux-wallpaperengine con el flag --speed (parcheado en esta sesion); si el motor
-# instalado no lo soporta, --set-property/etc siguen funcionando igual, solo este
-# flag concreto daria error de argumento desconocido.
+# linux-wallpaperengine con el flag --speed (parcheado, no esta en el motor
+# oficial); se detecta con --help y, si el motor instalado no lo soporta, se omite.
 wpe_get_speed_args() {
     local screen="$1"
+    # Un motor sin --speed abortaria con "argumento desconocido" y el wallpaper no
+    # arrancaria; en ese caso se omite el flag.
+    linux-wallpaperengine --help 2>&1 | grep -q -- '--speed' || return 0
     [[ -s "$SPEED_FILE" ]] || return 0
     local speed
     speed=$(jq -r --arg s "$screen" '.[$s] // 1.0' "$SPEED_FILE" 2>/dev/null)

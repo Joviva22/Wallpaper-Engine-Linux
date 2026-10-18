@@ -309,6 +309,23 @@ def save_audio(data):
     atomic_write_json(AUDIO_FILE, data)
 
 
+_SPEED_SUPPORTED = None
+
+
+def engine_supports_speed():
+    """True si el linux-wallpaperengine instalado reconoce --speed (es un parche,
+    no esta en el motor oficial). Se consulta una vez y se cachea."""
+    global _SPEED_SUPPORTED
+    if _SPEED_SUPPORTED is None:
+        try:
+            out = subprocess.run(["linux-wallpaperengine", "--help"], capture_output=True,
+                                 text=True, timeout=10)
+            _SPEED_SUPPORTED = "--speed" in (out.stdout + out.stderr)
+        except Exception:
+            _SPEED_SUPPORTED = False
+    return _SPEED_SUPPORTED
+
+
 def load_speed():
     """Velocidad de reproduccion guardada por pantalla, { "PANTALLA": 1.0-4.0 }.
     Requiere el flag --speed de linux-wallpaperengine (anadido en esta sesion,

@@ -22,7 +22,7 @@ from .config import (
     CACHE_DIR, STEAM_LIB, load_scaling, save_scaling, SCALING_MODES, DEFAULT_SCALING,
     load_properties, save_properties, KNOWN_BAD_FILE,
     load_audio, save_audio, DEFAULT_VOLUME,
-    load_speed, save_speed, SPEED_OPTIONS, DEFAULT_SPEED,
+    load_speed, save_speed, SPEED_OPTIONS, DEFAULT_SPEED, engine_supports_speed,
     has_hidden_password, set_hidden_password, clear_hidden_password, verify_hidden_password,
 )
 from .ui import icon_button, open_in_steam, apply_css, WallpaperCard, CARD_SIZE
@@ -373,6 +373,10 @@ class PickerWindow(Gtk.Window):
         self.speed_combo.set_active(idx)
         self.speed_combo.set_tooltip_text("Velocidad de reproduccion (solo afecta a wallpapers de video)")
         self.speed_combo.connect("changed", self.on_speed_changed)
+        if not engine_supports_speed():
+            self.speed_combo.set_sensitive(False)
+            self.speed_combo.set_tooltip_text(
+                "Tu version de linux-wallpaperengine no soporta --speed (requiere un motor parcheado)")
         chips_box.pack_start(self.speed_combo, False, False, 0)
 
         box.pack_start(chips_box, False, False, 0)
