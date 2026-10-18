@@ -4,6 +4,7 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: #0c1016;
+  --shadow: 0.4;
   font-family: "Segoe UI", "Noto Sans", system-ui, sans-serif;
   color: #e8eef5;
   user-select: none;
@@ -239,3 +240,30 @@ body.previewing .slot { opacity: 0.25 !important; }
 .tile .badge.none { background: rgba(120, 130, 145, 0.85); }
 .tile.nopack { opacity: 0.45; filter: grayscale(0.7); }
 .tile.nopack:hover { transform: none; border-color: transparent; }
+
+/* ---------- background layer, shadows, scenes ---------- */
+#bg-layer { position: fixed; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; }
+/* the soft ellipse under every character */
+.slot::before {
+  content: ""; position: absolute; left: 12%; right: 12%; bottom: -1.5%; height: 5%; z-index: -1;
+  border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0) 70%);
+  opacity: var(--shadow); filter: blur(4px); pointer-events: none;
+}
+#scene-bar {
+  position: fixed; left: 18px; bottom: 22px; display: flex; gap: 8px; z-index: 50;
+  opacity: 0.25; transition: opacity 0.25s;
+}
+#scene-bar:hover, body.ui-awake #scene-bar { opacity: 1; }
+.scene-chip {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); cursor: pointer;
+  background: rgba(14, 20, 30, 0.72); color: #8fa3b8; font-size: 15px; backdrop-filter: blur(8px);
+}
+.scene-chip.filled { color: #fff; border-color: rgba(124, 240, 201, 0.6); }
+.scene-chip.active { background: linear-gradient(135deg, #2f9e8a, #3b7bd6); color: #fff; }
+.scene-chip:hover { transform: translateY(-3px); }
+.faces { display: flex; gap: 4px; flex: none; min-width: 64px; }
+.face {
+  width: 44px; height: 44px; border-radius: 10px; background: rgba(255, 255, 255, 0.08) center 10% / 100% auto no-repeat;
+  display: flex; align-items: center; justify-content: center; color: #8fa3b8;
+}
+.scene-card.active { border-color: #7cf0c9; }

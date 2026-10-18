@@ -51,7 +51,7 @@
 
   // ------------------------------------------------------------------ defaults and settings
   function defaultValues() {
-    var defaults = { bgimage: true, autospread: true, speed: 100, reactevery: 0, bounce: 0, labels: false, bgcolor: '#0c1016' };
+    var defaults = { bgimage: true, bgblur: 0, bgdim: 0, shadow: 40, aimfollow: true, autospread: true, speed: 100, reactevery: 0, bounce: 0, labels: false, bgcolor: '#0c1016' };
     var xs = { 1: 50, 2: 25, 3: 75, 4: 10 };
     for (var i = 1; i <= SLOT_COUNT; i++) {
       defaults['char' + i] = 'none';
@@ -85,7 +85,7 @@
       if (key === 'bgcolor') value = toHex(value);
       else if (typeof value === 'string' && value === 'true') value = true;
       else if (typeof value === 'string' && value === 'false') value = false;
-      else if (/^(x|scale|y|z)\d$|^(speed|reactevery|bounce)$/.test(key)) value = Number(value);
+      else if (/^(x|scale|y|z)\d$|^(speed|reactevery|bounce|bgblur|bgdim|shadow)$/.test(key)) value = Number(value);
       if (value !== null) flat[key] = value;
     });
     return flat;
@@ -330,7 +330,7 @@
   }
 
   var MODES = [['main', 'Normal'], ['aim', 'Apuntando'], ['cover', 'Cobertura']];
-  var MODE_DEFAULT_ANIM = { main: 'idle', aim: 'aim', cover: 'cover_idle' };
+  var MODE_DEFAULT_ANIM = { main: 'idle', aim: 'aim_idle', cover: 'cover_idle' };
   var REACTION_RE = /(action|shy|angry|talk|special|hit|reload|stun|fire)/i;
 
   function modeFile(code, mode) {
@@ -451,6 +451,7 @@
           slot.baseAnim = animation && names.indexOf(animation) !== -1 ? animation : names[0];
           slot.reactions = names.filter(function (n) { return REACTION_RE.test(n) && n !== slot.baseAnim; });
           slot.element.style.opacity = '1';
+          if (mode === 'aim') setupAim(slot); else slot.aim = null;
           refreshPanel();
         },
         function () {
@@ -464,6 +465,42 @@
           }
         });
     }).catch(function (e) { console.error('load ' + code + ': ' + e); });
+  }
+
+  // Aim pose: the aim skeletons have two 1-second animations, aim_x and aim_y, whose time is the aiming angle.
+  // Pinning them to the pointer position makes the character follow the cursor.
+  var pointer = { x: window.innerWidth / 2, y: window.innerHeight / 3 };
+
+  function setupAim(slot) {
+    slot.aim = null;
+    var names = slot.animations;
+    if (!slot.player || names.indexOf('aim_x') === -1 || names.indexOf('aim_y') === -1) return;
+    var state = slot.player.animationState;
+    var x = state.setAnimation(1, 'aim_x', true);
+    var y = state.setAnimation(2, 'aim_y', true);
+    x.timeScale = 0; y.timeScale = 0;
+    slot.aim = { x: x, y: y, fx: 0.5, fy: 0.5 };
+  }
+
+  function updateAim(slot) {
+    if (!slot.aim || values.aimfollow === false) return;
+    var rect = slot.element.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height * 0.3;
+    var tx = Math.max(-1, Math.min(1, (pointer.x - cx) / (window.innerWidth * 0.5)));
+    var ty = Math.max(-1, Math.min(1, (pointer.y - cy) / (window.innerHeight * 0.5)));
+    if (slot.flip) tx = -tx;
+    var targetX = tx * 0.5 + 0.5;
+    var targetY = ty * 0.5 + 0.5;
+    slot.aim.fx += (targetX - slot.aim.fx) * 0.25;
+    slot.aim.fy += (targetY - slot.aim.fy) * 0.25;
+    slot.aim.x.trackTime = slot.aim.fx * 0.999;
+    slot.aim.y.trackTime = slot.aim.fy * 0.999;
+  }
+
+  function aimLoop() {
+    slots.forEach(updateAim);
+    requestAnimationFrame(aimLoop);
   }
 
   function playAnimation(slot, name, loop) {
@@ -508,14 +545,19 @@
 
   function applyAll() {
     document.body.style.backgroundColor = values.bgcolor;
-    if (backgroundFile && values.bgimage !== false) {
-      document.body.style.backgroundImage = 'url("' + BASE + backgroundFile + '")';
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-      document.body.style.backgroundRepeat = 'no-repeat';
-    } else {
-      document.body.style.backgroundImage = 'none';
+    var layer = $('bg-layer');
+    if (layer) {
+      if (backgroundFile && values.bgimage !== false) {
+        layer.style.backgroundImage = 'url("' + BASE + backgroundFile + '")';
+        // blur needs a little scale so the soft edges do not show; dim darkens the picture
+        var blur = Number(values.bgblur) || 0;
+        layer.style.filter = 'blur(' + blur + 'px) brightness(' + (1 - (Number(values.bgdim) || 0) / 100) + ')';
+        layer.style.transform = 'scale(' + (1 + blur / 400) + ')';
+      } else {
+        layer.style.backgroundImage = 'none';
+      }
     }
+    document.body.style.setProperty('--shadow', String((Number(values.shadow) || 0) / 100));
     scheduleReactions(Number(values.reactevery));
     slots.forEach(function (slot) { slot.code = values['char' + (slot.index + 1)]; });
     slots.forEach(function (slot) {
@@ -536,6 +578,7 @@
     event.preventDefault();
   }
   window.addEventListener('mousemove', function (event) {
+    pointer.x = event.clientX; pointer.y = event.clientY;
     wake();
     if (!drag) return;
     var i = drag.slot.index + 1;
@@ -672,7 +715,8 @@
       swatch.style.background = hex;
       return swatch;
     }));
-    var rows = [toggle('bgimage', 'Imagen de fondo'), toggle('autospread', 'Repartir solos'), toggle('labels', 'Mostrar nombres'),
+    var rows = [toggle('bgimage', 'Imagen de fondo'), slider('bgblur', 'Desenfoque', 0, 30, 1, ' px'), slider('bgdim', 'Oscurecer fondo', 0, 80, 1, '%'),
+                slider('shadow', 'Sombra', 0, 100, 1, '%'), toggle('aimfollow', 'Apuntar al cursor'), toggle('autospread', 'Repartir solos'), toggle('labels', 'Mostrar nombres'),
                 slider('speed', 'Velocidad', 25, 300, 5, '%'), slider('reactevery', 'Reacción cada', 0, 120, 5, ' s'),
                 slider('bounce', 'Latido (música)', 0, 30, 1, '%')];
     var reset = el('button', { class: 'btn danger', text: 'Restablecer ajustes', onclick: function () {
@@ -687,6 +731,8 @@
       el('div', { class: 'card' }, [el('h2', { text: 'Fondo' }),
         el('div', { class: 'row' }, [el('label', { text: 'Color' }), color]), swatches,
         el('p', { class: 'hint', text: 'La imagen es la del sistema por defecto; se cambia desde Elegir Fondo (Nikke Stage: personajes) o con scripts/nikke-stage.py background.' })]),
+      el('div', { class: 'card' }, [el('h2', { text: 'Ratón' }),
+        el('p', { class: 'hint' }, [document.createTextNode('Rueda del ratón: '), el('b', { id: 'wheel-status', text: 'sin detectar (gírala sobre el wallpaper)' })])]),
       el('div', { class: 'card' }, [el('h2', { text: 'Edición en pantalla' }),
         el('p', { class: 'hint', text: 'Con el panel abierto puedes arrastrar los personajes por la pantalla para moverlos (el tamaño se cambia con el deslizador de cada hueco).' }),
         reset])]);
@@ -701,6 +747,87 @@
       text: 'Elige hasta cuatro personajes. Pulsa la foto de cada hueco para cambiarlo o ve a "Catálogo" para descargar más.' })]
       .concat(slotCards));
     page.sync = function () { slotCards.forEach(function (card) { card.sync(); }); };
+    return page;
+  }
+
+  // ---- scene profiles: save and recall a whole set-up (characters, poses, positions, scene options)
+  var PROFILE_COUNT = 6;
+  var PROFILES_KEY = 'nikkeStage.profiles.v1';
+  var profiles = {};
+  var activeProfile = null;
+
+  function loadProfiles() {
+    try { profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '{}') || {}; } catch (e) { profiles = {}; }
+  }
+
+  function storeProfiles() {
+    try { localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); } catch (e) { console.error('profiles: ' + e); }
+  }
+
+  function saveProfile(n) {
+    profiles[n] = { values: JSON.parse(JSON.stringify(values)), t: Date.now() };
+    activeProfile = n;
+    storeProfiles();
+    refreshPanel();
+    toast('Escena ' + n + ' guardada');
+  }
+
+  function applyProfile(n) {
+    var profile = profiles[n];
+    if (!profile) return;
+    values = defaultValues();
+    Object.keys(profile.values).forEach(function (key) { values[key] = profile.values[key]; });
+    activeProfile = n;
+    scheduleSave();
+    applyAll();
+    toast('Escena ' + n + ' cargada');
+  }
+
+  function deleteProfile(n) {
+    delete profiles[n];
+    if (activeProfile === n) activeProfile = null;
+    storeProfiles();
+    refreshPanel();
+  }
+
+  function buildScenesPage() {
+    var cards = [];
+    for (var n = 1; n <= PROFILE_COUNT; n++) {
+      (function (number) {
+        var faces = el('div', { class: 'faces' });
+        var title = el('b');
+        var load = el('button', { class: 'btn primary', text: 'Cargar', onclick: function () { applyProfile(number); } });
+        var save = el('button', { class: 'btn', text: 'Guardar aquí', onclick: function () { saveProfile(number); } });
+        var remove = el('button', { class: 'btn danger', text: 'Borrar', onclick: function () { deleteProfile(number); } });
+        var card = el('div', { class: 'card scene-card' }, [
+          el('div', { class: 'slot-head' }, [faces, el('div', { class: 'slot-title' }, [title])]),
+          el('div', { class: 'actions' }, [load, save, remove])]);
+        card.sync = function () {
+          var profile = profiles[number];
+          card.classList.toggle('active', activeProfile === number);
+          title.textContent = 'Escena ' + number + (activeProfile === number ? '  ·  activa' : '');
+          faces.innerHTML = '';
+          if (profile) {
+            for (var i = 1; i <= SLOT_COUNT; i++) {
+              var code = profile.values['char' + i];
+              if (code && code !== 'none') {
+                var face = el('div', { class: 'face', title: charName(code) });
+                face.style.backgroundImage = 'url("' + thumbUrl(code) + '")';
+                faces.appendChild(face);
+              }
+            }
+          } else {
+            faces.appendChild(el('div', { class: 'face empty', text: '∅' }));
+          }
+          load.style.display = profile ? '' : 'none';
+          remove.style.display = profile ? '' : 'none';
+        };
+        cards.push(card);
+      })(n);
+    }
+    var page = el('div', { class: 'page' }, [el('p', { class: 'hint',
+      text: 'Una escena guarda todo: personajes, poses, posiciones, fondo y ajustes. Monta lo que quieras, pulsa "Guardar aquí" y cámbiala después con un clic.' })].concat(cards));
+    page.sync = function () { cards.forEach(function (card) { card.sync(); }); };
     return page;
   }
 
@@ -1114,6 +1241,11 @@
 
   // ---- panel shell
   function refreshPanel() {
+    Array.prototype.forEach.call(document.querySelectorAll('#scene-bar .scene-chip'), function (chip) {
+      var n = Number(chip.getAttribute('data-n'));
+      chip.classList.toggle('filled', !!profiles[n]);
+      chip.classList.toggle('active', activeProfile === n);
+    });
     Object.keys(pageNodes).forEach(function (name) { if (pageNodes[name].sync) pageNodes[name].sync(); });
     if (document.body.classList.contains('picker-open')) renderPicker();
   }
@@ -1143,15 +1275,23 @@
     window.addEventListener('mouseup', function () { state = null; });
   }
 
+  var wheelSeen = false;
+  window.addEventListener('wheel', function () {
+    if (!wheelSeen) { wheelSeen = true; toast('Rueda del ratón detectada ✔'); }
+    var node = $('wheel-status');
+    if (node) node.textContent = 'detectada ✔';
+  }, { passive: true });
+
   function buildUI() {
-    var tabs = [['chars', 'Personajes'], ['catalog', 'Catálogo'], ['scene', 'Escena']];
+    var tabs = [['chars', 'Personajes'], ['catalog', 'Catálogo'], ['scenes', 'Escenas'], ['scene', 'Ajustes']];
     pageNodes.chars = buildCharactersPage();
     pageNodes.catalog = buildCatalogPage();
     pageNodes.scene = buildScenePage();
+    pageNodes.scenes = buildScenesPage();
     var tabBar = el('div', { class: 'tabs' }, tabs.map(function (t) {
       return el('button', { class: 'tab', id: 'tab-' + t[0], text: t[1], onclick: function () { showTab(t[0]); } });
     }));
-    var pagesBox = el('div', { class: 'pages' }, [pageNodes.chars, pageNodes.catalog, pageNodes.scene]);
+    var pagesBox = el('div', { class: 'pages' }, [pageNodes.chars, pageNodes.catalog, pageNodes.scenes, pageNodes.scene]);
     makeDragScroll(pagesBox);
     var panel = el('div', { id: 'panel' }, [
       el('header', {}, [el('h1', {}, [document.createTextNode('Nikke '), el('span', { text: 'Stage' })]),
@@ -1166,6 +1306,10 @@
         el('div', { class: 'row' }, [el('button', { class: 'btn primary', text: 'Descargar más personajes', onclick: function () {
           document.body.classList.remove('picker-open'); showTab('catalog'); } }),
           el('button', { class: 'btn', text: 'Cancelar', onclick: function () { document.body.classList.remove('picker-open'); } })])])]);
+    document.body.appendChild(el('div', { id: 'scene-bar' }, [1, 2, 3, 4, 5, 6].map(function (n) {
+      return el('button', { class: 'scene-chip', text: String(n), title: 'Escena ' + n, 'data-n': String(n),
+        onclick: function () { if (profiles[n]) applyProfile(n); else toast('La escena ' + n + ' está vacía (guárdala desde el panel)'); } });
+    })));
     document.body.appendChild(el('button', { id: 'gear', title: 'Ajustes de Nikke Stage', text: '⚙',
       onclick: function () { setPanel(!document.body.classList.contains('panel-open')); } }));
     document.body.appendChild(panel);
@@ -1201,12 +1345,14 @@
   function start() {
     for (var i = 0; i < SLOT_COUNT; i++) slots.push(createSlot(i));
     loadSaved();
+    loadProfiles();
     values = computeValues();
     chooseDefaults();
     buildUI();
     applyAll();
     loadCatalog();
     window.addEventListener('resize', function () { slots.forEach(layout); });
+    aimLoop();
     window.addEventListener('keydown', function (event) { if (event.key === 'Escape') setPanel(false); });
     window.wallpaperPropertyListener = {
       applyUserProperties: function (delivered) {
@@ -1224,6 +1370,9 @@
       });
     }
   }
+
+  // read-only handle for debugging from the console / tests
+  window.nikkeStage = { slots: slots, values: function () { return values; } };
 
   Promise.all([loadDiskManifest(), loadDbChars()]).then(start);
 })();
