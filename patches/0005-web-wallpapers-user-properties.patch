@@ -1,0 +1,145 @@
+diff --git a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+index d1749535..0c27e790 100644
+--- a/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
++++ b/src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+@@ -5,6 +5,10 @@
+ #include "WallpaperEngine/WebBrowser/CEF/WPSchemeHandlerFactory.h"
+ 
+ #include "WallpaperEngine/Data/Model/Project.h"
++#include "WallpaperEngine/Data/Model/Property.h"
++#include <nlohmann/json.hpp>
++#include <iomanip>
++#include <sstream>
+ #include "WallpaperEngine/Data/Model/Wallpaper.h"
+ 
+ using namespace WallpaperEngine::Render;
+@@ -13,6 +17,67 @@ using namespace WallpaperEngine::Render::Wallpapers;
+ using namespace WallpaperEngine::WebBrowser;
+ using namespace WallpaperEngine::WebBrowser::CEF;
+ 
++namespace {
++/**
++ * Wallpaper Engine hands web wallpapers their user properties by calling
++ * window.wallpaperPropertyListener.applyUserProperties ({ name: { value } }) once the page is
++ * ready. Without it, wallpapers that build their look from properties (background colour,
++ * position, size...) stay unstyled. The listener may be registered after the page's load event,
++ * so the call is retried for a few seconds.
++ */
++std::string buildUserPropertiesScript (const WallpaperEngine::Data::Model::Properties& properties) {
++    using namespace WallpaperEngine::Data::Model;
++
++    nlohmann::json values = nlohmann::json::object ();
++
++    for (const auto& [name, property] : properties) {
++	nlohmann::json entry = nlohmann::json::object ();
++
++	if (property->is<PropertySlider> ()) {
++	    entry["type"] = "slider";
++	    entry["value"] = property->getFloat ();
++	} else if (property->is<PropertyBoolean> ()) {
++	    entry["type"] = "bool";
++	    entry["value"] = property->getBool ();
++	} else if (property->is<PropertyColor> ()) {
++	    const glm::vec3& color = property->getVec3 ();
++	    std::ostringstream text;
++
++	    text << std::fixed << std::setprecision (5) << color.r << " " << color.g << " " << color.b;
++	    entry["type"] = "color";
++	    entry["value"] = text.str ();
++	} else if (property->is<PropertyCombo> ()) {
++	    entry["type"] = "combo";
++	    entry["value"] = property->toString ();
++	} else {
++	    entry["type"] = "text";
++	    entry["value"] = property->toString ();
++	}
++
++	values[name] = std::move (entry);
++    }
++
++    return "(function () {\n"
++	   "  var properties = "
++	+ values.dump ()
++	+ ";\n"
++	  "  var attempts = 0;\n"
++	  "  function deliver () {\n"
++	  "    var listener = window.wallpaperPropertyListener;\n"
++	  "    if (listener && typeof listener.applyUserProperties === 'function') {\n"
++	  "      try { listener.applyUserProperties (properties); } catch (e) { console.error (e); }\n"
++	  "      if (typeof listener.applyGeneralProperties === 'function') {\n"
++	  "        try { listener.applyGeneralProperties ({ fps: 30 }); } catch (e) { console.error (e); }\n"
++	  "      }\n"
++	  "    } else if (++attempts < 100) {\n"
++	  "      setTimeout (deliver, 100);\n"
++	  "    }\n"
++	  "  }\n"
++	  "  deliver ();\n"
++	  "})();\n";
++}
++} // namespace
++
+ CWeb::CWeb (
+     const Wallpaper& wallpaper, RenderContext& context, AudioContext& audioContext, WebBrowserContext& browserContext,
+     const WallpaperState::TextureUVsScaling& scalingMode, const uint32_t& clampMode
+@@ -30,6 +95,7 @@ CWeb::CWeb (
+     browserSettings.windowless_frame_rate = std::max (60, context.getApp ().getContext ().settings.render.maximumFPS);
+ 
+     this->m_client = new WebBrowser::CEF::BrowserClient (m_renderHandler);
++    this->m_client->setLoadScript (buildUserPropertiesScript (this->getWeb ().project.properties));
+     // use the custom scheme for the wallpaper's files
+     const std::string htmlURL = WPSchemeHandlerFactory::generateSchemeName (this->getWeb ().project.workshopId)
+ 	+ "://root/" + this->getWeb ().filename;
+diff --git a/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.cpp b/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.cpp
+index 14618ce5..ebecc82e 100644
+--- a/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.cpp
++++ b/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.cpp
+@@ -4,4 +4,12 @@ using namespace WallpaperEngine::WebBrowser::CEF;
+ 
+ BrowserClient::BrowserClient (CefRefPtr<CefRenderHandler> ptr) : m_renderHandler (std::move (ptr)) { }
+ 
+-CefRefPtr<CefRenderHandler> BrowserClient::GetRenderHandler () { return m_renderHandler; }
+\ No newline at end of file
++CefRefPtr<CefRenderHandler> BrowserClient::GetRenderHandler () { return m_renderHandler; }
++
++void BrowserClient::OnLoadEnd (CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) {
++    if (!frame->IsMain () || this->m_loadScript.empty ()) {
++	return;
++    }
++
++    frame->ExecuteJavaScript (this->m_loadScript, frame->GetURL (), 0);
++}
+diff --git a/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.h b/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.h
+index 499bb738..1a6fd60a 100644
+--- a/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.h
++++ b/src/WallpaperEngine/WebBrowser/CEF/BrowserClient.h
+@@ -1,19 +1,29 @@
+ #pragma once
+ 
+ #include "include/cef_client.h"
++#include "include/cef_load_handler.h"
++#include <string>
+ 
+ namespace WallpaperEngine::WebBrowser::CEF {
+ // *************************************************************************
+ //! \brief Provide access to browser-instance-specific callbacks. A single
+ //! CefClient instance can be shared among any number of browsers.
+ // *************************************************************************
+-class BrowserClient : public CefClient {
++class BrowserClient : public CefClient, public CefLoadHandler {
+ public:
+     explicit BrowserClient (CefRefPtr<CefRenderHandler> ptr);
+ 
+     [[nodiscard]] CefRefPtr<CefRenderHandler> GetRenderHandler () override;
+ 
++    [[nodiscard]] CefRefPtr<CefLoadHandler> GetLoadHandler () override { return this; }
++
++    /** Script executed in the main frame once the page has loaded (delivers the user properties) */
++    void setLoadScript (std::string script) { this->m_loadScript = std::move (script); }
++
++    void OnLoadEnd (CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) override;
++
+     CefRefPtr<CefRenderHandler> m_renderHandler = nullptr;
++    std::string m_loadScript;
+ 
+     IMPLEMENT_REFCOUNTING (BrowserClient);
+ };

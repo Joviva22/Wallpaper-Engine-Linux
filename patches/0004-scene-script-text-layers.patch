@@ -1,0 +1,96 @@
+diff --git a/src/WallpaperEngine/Scripting/Adapters/VectorAdapter.cpp b/src/WallpaperEngine/Scripting/Adapters/VectorAdapter.cpp
+index 1162bf24..40f9c80c 100644
+--- a/src/WallpaperEngine/Scripting/Adapters/VectorAdapter.cpp
++++ b/src/WallpaperEngine/Scripting/Adapters/VectorAdapter.cpp
+@@ -840,6 +840,11 @@ VectorAdapter<components>::VectorAdapter (ScriptEngine& engine) :
+     );
+ 
+     JS_SetConstructor (this->m_engine.getContext (), ctor, m_prototype);
++    // publish the constructor globally (Vec2/Vec3/Vec4) so scripts can do `new Vec3 (...)`
++    JS_DefinePropertyValueStr (
++	this->m_engine.getContext (), this->m_engine.getGlobalThis (), this->m_name.c_str (),
++	JS_DupValue (this->m_engine.getContext (), ctor), JS_PROP_ENUMERABLE
++    );
+     JS_DefinePropertyValueStr (
+ 	this->m_engine.getContext (), m_prototype, "copy",
+ 	JS_NewCFunction (this->m_engine.getContext (), vector_copy<components>, "copy", 0), JS_PROP_ENUMERABLE
+diff --git a/src/WallpaperEngine/Scripting/ScriptEngine.cpp b/src/WallpaperEngine/Scripting/ScriptEngine.cpp
+index e690b92d..5355b64d 100644
+--- a/src/WallpaperEngine/Scripting/ScriptEngine.cpp
++++ b/src/WallpaperEngine/Scripting/ScriptEngine.cpp
+@@ -1,4 +1,5 @@
+ #include "ScriptEngine.h"
++#include "WallpaperEngine/Data/Model/Property.h"
+ 
+ #include "Adapters/ScriptableObjectAdapter.h"
+ #include "Modules/ColorModule.h"
+@@ -344,6 +345,15 @@ ScriptLayerHandle ScriptEngine::createLayerScript (
+     }
+ 
+     JS_SetPropertyStr (ctx, globalObj, "__layerSeedProps", seedProps);
++
++    // effective values of the project's user properties, exposed to scripts as engine.userProperties
++    JSValue seedUserProps = JS_NewObject (ctx);
++
++    for (const auto& [name, property] : this->m_scene.getScene ().project.properties) {
++	JS_SetPropertyStr (ctx, seedUserProps, name.c_str (), this->dynamicToJs (*property));
++    }
++
++    JS_SetPropertyStr (ctx, globalObj, "__layerSeedUserProps", seedUserProps);
+     JS_SetPropertyStr (ctx, globalObj, "__layerSeedText", JS_NewString (ctx, initialText.c_str ()));
+ 
+     const ScriptLayerHandle id = this->m_nextLayerId++;
+@@ -374,20 +384,36 @@ ScriptLayerHandle ScriptEngine::createLayerScript (
+ 	<< "  var __id = " << id << ";\n"
+ 	<< "  var __props = Object.assign({}, globalThis.__layerSeedProps || {});\n"
+ 	<< "  var thisLayer = { text: String(globalThis.__layerSeedText || '') };\n"
+-	<< "  var thisScene = {\n"
++	// thisScene and engine wrap the REAL global objects (so every native method and getter keeps
++	// working, bound to the native receiver) and only override the per-tick time values, which the
++	// scene context provides. Replacing them with plain objects used to hide getLayer and friends.
++	<< "  var __userProps = Object.assign({}, globalThis.__layerSeedUserProps || {});\n"
++	<< "  function __wrapGlobal(real, overrides) {\n"
++	<< "    real = real || {};\n"
++	// An empty dummy target keeps Proxy invariants out of the way (the real objects expose
++	// non-configurable, read-only native properties that a Proxy may not report differently).
++	<< "    return new Proxy({}, {\n"
++	<< "      get: function(t, k) {\n"
++	<< "        if (Object.prototype.hasOwnProperty.call(overrides, k)) return overrides[k];\n"
++	<< "        var v = real[k];\n"
++	<< "        return (typeof v === 'function') ? v.bind(real) : v;\n"
++	<< "      },\n"
++	<< "      set: function(t, k, v) { real[k] = v; return true; },\n"
++	<< "      has: function(t, k) { return Object.prototype.hasOwnProperty.call(overrides, k) || (k in real); }\n"
++	<< "    });\n"
++	<< "  }\n"
++	<< "  var thisScene = __wrapGlobal(globalThis.thisScene, {\n"
+ 	<< "    get time()        { var c = globalThis.__sceneCtx; return c ? c.time : 0; },\n"
+ 	<< "    get currentTime() { var c = globalThis.__sceneCtx; return c ? c.time : 0; },\n"
+ 	<< "    get dt()          { var c = globalThis.__sceneCtx; return c ? c.dt   : 0; },\n"
+ 	<< "    get fps()         { var c = globalThis.__sceneCtx; return c ? c.fps  : 60; },\n"
+-	<< "  };\n"
+-	// Minimal WE `engine` shim. Real Wallpaper Engine exposes a broad API
+-	// (media events, audio buffer, user input); we provide just enough for
+-	// the common built-in text scripts to run without ReferenceError.
++	<< "  });\n"
+ 	// `frametime` is the per-frame delta in seconds (what InsertFPS reads).
+-	<< "  var engine = {\n"
+-	<< "    get frametime() { var c = globalThis.__sceneCtx; return c ? c.dt : 0; },\n"
+-	<< "    get time()      { var c = globalThis.__sceneCtx; return c ? c.time : 0; },\n"
+-	<< "  };\n"
++	<< "  var engine = __wrapGlobal(globalThis.engine, {\n"
++	<< "    get frametime()      { var c = globalThis.__sceneCtx; return c ? c.dt : 0; },\n"
++	<< "    get time()           { var c = globalThis.__sceneCtx; return c ? c.time : 0; },\n"
++	<< "    get userProperties() { return __userProps; },\n"
++	<< "  });\n"
+ 	<< "  function createScriptProperties() {\n"
+ 	<< "    var builder = {\n"
+ 	<< "      addSlider:   function(o){ if (!(o.name in __props)) __props[o.name] = o.value; return builder; },\n"
+@@ -428,6 +454,7 @@ ScriptLayerHandle ScriptEngine::createLayerScript (
+     // Unset seeds so they don't leak into the next createLayerScript call.
+     JS_SetPropertyStr (ctx, globalObj, "__layerSeedProps", JS_UNDEFINED);
+     JS_SetPropertyStr (ctx, globalObj, "__layerSeedText", JS_UNDEFINED);
++    JS_SetPropertyStr (ctx, globalObj, "__layerSeedUserProps", JS_UNDEFINED);
+     JS_FreeValue (ctx, globalObj);
+ 
+     if (JS_IsException (result)) {

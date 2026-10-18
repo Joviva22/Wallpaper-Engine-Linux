@@ -27,6 +27,7 @@ las entradas se agrupan por fecha hasta que se publique la primera (`v0.1.0`).
   normalizados, herencia en presets y filtro «Tipo» en la interfaz.
 - Motor parcheado (`patches/`, `scripts/build-engine.sh`): corrige los wallpapers web en
   negro (#629 upstream) y añade `--speed` para escenas y vídeo.
+- Motor parcheado: propiedades de usuario para wallpapers web (arregla el fondo de los Nikke) y mejoras de SceneScript en textos (`patches/0004`, `0005`).
 - Luces de escena en el motor parcheado (`patches/0003`): puntuales, focos y direccionales.
 - Wallpapers web desactivados por defecto, con confirmación explícita (`allow_web`).
 - `uninstall.sh`; `install.sh` pide confirmación antes de usar `sudo`.
