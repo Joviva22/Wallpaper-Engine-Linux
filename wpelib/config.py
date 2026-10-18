@@ -14,6 +14,8 @@ import tempfile
 
 from PIL import Image
 
+from .classify import classify_project
+
 APPID = "431960"
 CONF_DIR = os.path.expanduser("~/.config/wallpaperengine-picker")
 CONFIG_FILE = os.path.join(CONF_DIR, "config.json")
@@ -459,30 +461,45 @@ def load_wallpapers():
     items = []
     if not os.path.isdir(WORKSHOP_DIR):
         return items
-    for entry in sorted(os.listdir(WORKSHOP_DIR)):
-        folder = os.path.join(WORKSHOP_DIR, entry)
-        project_path = os.path.join(folder, "project.json")
-        if not os.path.isfile(project_path):
-            continue
-        try:
-            with open(project_path, encoding="utf-8", errors="ignore") as f:
-                data = json.load(f)
-            title = data.get("title", entry)
-            preview = data.get("preview", "")
-            tags = data.get("tags", []) or []
-            rating = data.get("contentrating", "Desconocido") or "Desconocido"
-            wtype = data.get("type", "Desconocido") or "Desconocido"
-        except Exception:
-            title, preview, tags, rating, wtype = entry, "", [], "Desconocido", "Desconocido"
 
-        # Wallpaper Engine no es consistente con las mayusculas de "type"
-        # ("scene" vs "Scene", "video" vs "Video"...); lo normalizamos aqui
-        # una sola vez para que todo el resto de la app compare de forma fiable.
-        wtype = wtype.strip().capitalize() if isinstance(wtype, str) and wtype.strip() else "Desconocido"
+    raw_cache = {}
+
+    def read_project(wid):
+        """(project.json, nombres de archivo) de un wallpaper, o None si no existe."""
+        if wid in raw_cache:
+            return raw_cache[wid]
+        folder = os.path.join(WORKSHOP_DIR, wid)
+        result = None
+        project_path = os.path.join(folder, "project.json")
+        if os.path.isfile(project_path):
+            try:
+                with open(project_path, encoding="utf-8", errors="ignore") as f:
+                    data = json.load(f)
+            except Exception:
+                data = {}
+            try:
+                names = os.listdir(folder)
+            except OSError:
+                names = []
+            result = (data if isinstance(data, dict) else {}, names)
+        raw_cache[wid] = result
+        return result
+
+    for entry in sorted(os.listdir(WORKSHOP_DIR)):
+        project = read_project(entry)
+        if project is None:
+            continue
+        folder = os.path.join(WORKSHOP_DIR, entry)
+        info = classify_project(entry, project[0], project[1], resolve=read_project)
 
         thumb_path = os.path.join(CACHE_DIR, f"{entry}.png")
         has_cached_thumb = os.path.isfile(thumb_path)
+        preview = info["preview"]
         preview_path = os.path.join(folder, preview) if preview else ""
+        if not preview_path or not os.path.isfile(preview_path):
+            # Sin `preview` declarado (o roto): probar los nombres habituales.
+            preview_path = next((os.path.join(folder, n) for n in project[1]
+                                 if n.lower().startswith("preview.")), "")
 
         try:
             mtime = os.path.getmtime(folder)
@@ -490,10 +507,11 @@ def load_wallpapers():
             mtime = 0
 
         items.append({
-            "id": entry, "title": title,
+            "id": entry, "title": info["title"],
             "thumb": thumb_path if has_cached_thumb else None,
-            "preview_path": preview_path if os.path.isfile(preview_path) else None,
-            "tags": tags, "rating": rating, "mtime": mtime, "type": wtype,
+            "preview_path": preview_path if preview_path and os.path.isfile(preview_path) else None,
+            "tags": info["tags"], "rating": info["rating"], "mtime": mtime, "type": info["type"],
+            "preset": info["preset"], "dependency": info["dependency"],
         })
     items.sort(key=lambda r: r["title"].lower())
     return items

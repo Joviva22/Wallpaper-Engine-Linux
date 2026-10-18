@@ -11,6 +11,7 @@ import urllib.error
 
 from PIL import Image
 
+from .classify import KNOWN_TAGS as CLASSIFY_KNOWN_TAGS
 from .config import STEAM_LIB, WORKSHOP_DIR, THUMB_SIZE, WORKSHOP_THUMB_CACHE, APPID, STEAM_API_QUERYFILES
 
 class SteamApiError(Exception):
@@ -20,11 +21,7 @@ class SteamApiError(Exception):
 # Categorias de etiquetas conocidas del Workshop de Wallpaper Engine (visibles en su pagina
 # de busqueda). La clasificacion de edad no es una etiqueta normal expuesta por la API, asi
 # que esa se filtra en el cliente comprobando las etiquetas devueltas por cada resultado.
-KNOWN_TAGS = [
-    "Abstract", "Animal", "Anime", "CGI", "Cartoon", "Cyberpunk", "Fantasy", "Game",
-    "Landscape", "Memes", "Music", "Nature", "Pixel art", "Relaxing", "Retro",
-    "Sci-Fi", "Sports", "Technology", "Television", "Unspecified", "Vehicle",
-]
+KNOWN_TAGS = list(CLASSIFY_KNOWN_TAGS)
 RATING_TAGS = ["Everyone", "Questionable", "Mature"]
 
 # Ventanas de tiempo para "mas popular en..." (k_PublishedFileQueryType_RankedByTrend = 3),

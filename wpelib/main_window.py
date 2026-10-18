@@ -53,11 +53,13 @@ class FiltersMenuButton(Gtk.MenuButton):
     """Boton unico 'Filtros' con un popover que agrupa etiquetas (deben estar
     todas presentes) y clasificacion (basta con una) en checkboxes."""
 
-    def __init__(self, tag_options, rating_options, on_change=None, initial_ratings=None):
+    def __init__(self, tag_options, rating_options, on_change=None, initial_ratings=None,
+                 type_options=(), initial_types=None):
         super().__init__()
         self.on_change = on_change
         self.tag_checks = {}
         self.rating_checks = {}
+        self.type_checks = {}
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         box.set_border_width(10)
@@ -75,6 +77,15 @@ class FiltersMenuButton(Gtk.MenuButton):
             cb.connect("toggled", self._on_toggled)
             box.pack_start(cb, False, False, 0)
             self.rating_checks[opt] = cb
+
+        box.pack_start(Gtk.Separator(), False, False, 4)
+        box.pack_start(Gtk.Label(label="Tipo", xalign=0), False, False, 0)
+        for opt in type_options:
+            cb = Gtk.CheckButton(label=opt)
+            cb.set_active(initial_types is not None and opt in initial_types)
+            cb.connect("toggled", self._on_toggled)
+            box.pack_start(cb, False, False, 0)
+            self.type_checks[opt] = cb
 
         popover = Gtk.Popover()
         popover.add(box)
@@ -108,8 +119,12 @@ class FiltersMenuButton(Gtk.MenuButton):
     def get_selected_ratings(self):
         return [opt for opt, cb in self.rating_checks.items() if cb.get_active()]
 
+    def get_selected_types(self):
+        return [opt for opt, cb in self.type_checks.items() if cb.get_active()]
+
     def _update_label(self):
-        count = len(self.get_selected_tags()) + len(self.get_selected_ratings())
+        count = (len(self.get_selected_tags()) + len(self.get_selected_ratings())
+                 + len(self.get_selected_types()))
         self.set_label(f"Filtros ({count})" if count else "Filtros")
 
 
@@ -290,6 +305,8 @@ class PickerWindow(Gtk.Window):
             [], ["Everyone", "Questionable", "Mature", "Desconocido"],
             on_change=self.on_filters_changed,
             initial_ratings=ui_state.get("ratings", ["Everyone"]),
+            type_options=["Scene", "Video", "Web"],
+            initial_types=ui_state.get("types", []),
         )
         header_box.pack_start(self.filters_btn, False, False, 0)
 
@@ -610,6 +627,8 @@ class PickerWindow(Gtk.Window):
         subtitle_parts = []
         if item.get("type") and item["type"] not in ("Desconocido", "Scene"):
             subtitle_parts.append(item["type"])
+        if item.get("preset"):
+            subtitle_parts.append("Preset")
         if item.get("tags"):
             subtitle_parts.append(item["tags"][0])
         subtitle = " · ".join(subtitle_parts)
@@ -668,6 +687,10 @@ class PickerWindow(Gtk.Window):
 
         selected_ratings = self.filters_btn.get_selected_ratings()
         if selected_ratings and item["rating"] not in selected_ratings:
+            return False
+
+        selected_types = self.filters_btn.get_selected_types()
+        if selected_types and item["type"] not in selected_types:
             return False
 
         return True
@@ -1077,7 +1100,7 @@ class PickerWindow(Gtk.Window):
         for child in list(self.detail_info_grid.get_children()):
             self.detail_info_grid.remove(child)
         rows = [
-            ("Tipo", item.get("type") or "Desconocido"),
+            ("Tipo", (item.get("type") or "Desconocido") + (" (preset)" if item.get("preset") else "")),
             ("Categorias", ", ".join(item.get("tags", [])[:4]) or "-"),
             ("Clasificacion", item.get("rating") or "Desconocido"),
             ("Anadido", self._format_date(item.get("mtime"))),
@@ -1453,6 +1476,7 @@ class PickerWindow(Gtk.Window):
             "tab": self.current_tab,
             "sort": self.sort_combo.get_active_text(),
             "ratings": self.filters_btn.get_selected_ratings(),
+            "types": self.filters_btn.get_selected_types(),
             "target_monitor": self.target_monitor,
         })
 
