@@ -161,6 +161,29 @@ def _fix_vector_padding(scene):
     return fixed
 
 
+def _fix_scene_projection(scene):
+    """Use the engine's screen-sized projection when scene dimensions are absent.
+
+    WallpaperParser requires general.orthogonalprojection.width and .height unless
+    `auto` is true. The renderer already falls back to the active screen size for
+    this mode, so it is a safe default for incomplete projection metadata.
+    """
+    if not isinstance(scene, dict) or not isinstance(scene.get("general"), dict):
+        return False
+    general = scene["general"]
+    projection = general.get("orthogonalprojection")
+    if isinstance(projection, dict):
+        if projection.get("auto") is True:
+            return False
+        width, height = projection.get("width"), projection.get("height")
+        if type(width) is int and width > 0 and type(height) is int and height > 0:
+            return False
+        projection["auto"] = True
+    else:
+        general["orthogonalprojection"] = {"auto": True}
+    return True
+
+
 def _effect_file_refs(scene):
     """Devuelve el conjunto de rutas 'file' de todos los efectos usados en la
     escena (objects[].effects[].file), recorriendo tambien objetos anidados."""
@@ -452,13 +475,14 @@ def _attempt_repair_locked(wid, fix_project=True):
         return False, f"No se pudo leer scene.pkg: {e}"
 
     fixed = _fix_vector_padding(scene)
+    projection_fixed = _fix_scene_projection(scene)
     injected = _inject_missing_vendor_effects(scene, entries, raw_by_name)
     xray_fixed = _fix_broken_xray_shader(raw_by_name)
     audio_bars_fixed = _fix_audio_bars_shader(raw_by_name)
     fragments_fixed = _fix_known_fragment_shaders(raw_by_name)
     iris_fixed = _fix_iris_movement_shader(raw_by_name)
 
-    if not fixed and not injected and not xray_fixed and not audio_bars_fixed and not fragments_fixed and not iris_fixed:
+    if not fixed and not projection_fixed and not injected and not xray_fixed and not audio_bars_fixed and not fragments_fixed and not iris_fixed:
         if parts:
             return True, f"Reparado: {'; '.join(parts)} (backup en project.json.bak_original)."
         return False, "No se encontro ninguna incompatibilidad conocida en este wallpaper."
@@ -468,7 +492,7 @@ def _attempt_repair_locked(wid, fix_project=True):
     except OSError as e:
         return bool(parts), f"No se pudo guardar la copia original de scene.pkg: {e}"
 
-    if fixed:
+    if fixed or projection_fixed:
         raw_by_name["scene.json"] = json.dumps(scene, indent=4).encode("utf-8")
     try:
         _repack(pkg_path, header, entries, raw_by_name)
@@ -477,6 +501,8 @@ def _attempt_repair_locked(wid, fix_project=True):
 
     if fixed:
         parts.append(f"{fixed} campo(s) 'padding' corregidos")
+    if projection_fixed:
+        parts.append("proyeccion ortogonal incompleta configurada en modo automatico")
     if injected:
         parts.append(f"efectos anadidos: {', '.join(injected)}")
     if iris_fixed:

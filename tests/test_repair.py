@@ -69,6 +69,43 @@ class AtomicRepackTest(unittest.TestCase):
         self.assertEqual(os.listdir(d), ["scene.pkg"])
 
 
+class SceneProjectionTest(unittest.TestCase):
+    def test_missing_or_incomplete_projection_gets_auto(self):
+        for general in ({}, {"orthogonalprojection": {}}, {"orthogonalprojection": {"width": 1920}},
+                        {"orthogonalprojection": {"width": 0, "height": 1080}},
+                        {"orthogonalprojection": {"width": "1920", "height": 1080}}):
+            scene = {"general": dict(general)}
+            self.assertTrue(repair._fix_scene_projection(scene), general)
+            self.assertIs(scene["general"]["orthogonalprojection"]["auto"], True)
+
+    def test_valid_or_auto_projection_untouched(self):
+        for proj in ({"width": 1920, "height": 1080}, {"auto": True}, {"auto": True, "width": 5}):
+            scene = {"general": {"orthogonalprojection": dict(proj)}}
+            self.assertFalse(repair._fix_scene_projection(scene))
+            self.assertEqual(scene["general"]["orthogonalprojection"], proj)
+
+    def test_garbage_scene(self):
+        for scene in ({}, [], {"general": []}, None):
+            self.assertFalse(repair._fix_scene_projection(scene))
+
+    def test_attempt_repair_rewrites_pkg_and_is_idempotent(self):
+        d = tempfile.mkdtemp()
+        old = repair.WORKSHOP_DIR
+        repair.WORKSHOP_DIR = d
+        try:
+            os.mkdir(os.path.join(d, "7"))
+            pkg = os.path.join(d, "7", "scene.pkg")
+            build_pkg(pkg, {"scene.json": json.dumps({"general": {}, "objects": []}).encode()})
+            ok, msg = repair.attempt_repair("7")
+            self.assertTrue(ok, msg)
+            _, _, raw = repair._unpack(pkg)
+            self.assertIs(json.loads(raw["scene.json"])["general"]["orthogonalprojection"]["auto"], True)
+            self.assertTrue(os.path.isfile(pkg + ".bak_original"))
+            self.assertFalse(repair.attempt_repair("7")[0])
+        finally:
+            repair.WORKSHOP_DIR = old
+
+
 class ProjectJsonTest(unittest.TestCase):
     def combo(self, **kw):
         return {"type": "combo", "text": "x", **kw}
