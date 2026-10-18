@@ -1,6 +1,7 @@
 """Configuracion, deteccion de la biblioteca de Steam y estado persistido en
 disco: wallpapers ocultos, listas de rotacion, wallpapers con fallos
 conocidos, y el escaneo de la biblioteca local ya descargada."""
+import copy
 import hashlib
 import json
 import os
@@ -66,6 +67,37 @@ def atomic_write_json(path, data):
         raise
 
 
+def _id_set(data):
+    if not isinstance(data, list):
+        raise ValueError("se esperaba una lista")
+    return set(data)
+
+
+def load_json(path, default, convert=None):
+    """Lee JSON de `path`. Si no existe, devuelve una copia de `default`. Si esta
+    corrupto o no tiene la forma esperada, lo aparta como `path.corrupt` (en vez
+    de dejar que el siguiente save_* lo sobrescriba y se pierdan los datos sin
+    aviso) y devuelve `default`. `convert` (p.ej. set) valida/transforma."""
+    if not os.path.isfile(path):
+        return copy.deepcopy(default)
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if convert is not None:
+            data = convert(data)
+        elif not isinstance(data, type(default)):
+            raise ValueError("tipo inesperado")
+        return data
+    except OSError:
+        return copy.deepcopy(default)
+    except (ValueError, TypeError):  # incluye JSONDecodeError y UnicodeDecodeError
+        try:
+            os.replace(path, path + ".corrupt")
+        except OSError:
+            pass
+        return copy.deepcopy(default)
+
+
 # ---------------------------------------------------------------------------
 # Configuracion y deteccion de la biblioteca de Steam
 # ---------------------------------------------------------------------------
@@ -105,13 +137,7 @@ def detect_steam_library():
 
 
 def load_config():
-    cfg = {}
-    if os.path.isfile(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, encoding="utf-8") as f:
-                cfg = json.load(f)
-        except Exception:
-            cfg = {}
+    cfg = load_json(CONFIG_FILE, {})
     changed = False
     if not cfg.get("steam_library") or not os.path.isdir(cfg.get("steam_library", "")):
         cfg["steam_library"] = detect_steam_library()
@@ -146,13 +172,7 @@ def detect_monitors():
 
 
 def load_current_assignments(monitors):
-    assignments = {}
-    if os.path.isfile(CURRENT_FILE):
-        try:
-            with open(CURRENT_FILE, encoding="utf-8") as f:
-                assignments = json.load(f)
-        except Exception:
-            assignments = {}
+    assignments = load_json(CURRENT_FILE, {})
     for mon in monitors:
         assignments.setdefault(mon, DEFAULT_ID)
     return assignments
@@ -161,23 +181,11 @@ def load_current_assignments(monitors):
 def load_known_bad():
     """Ids que hicieron crashear linux-wallpaperengine la ultima vez que se probaron
     (detectado por wallpaperengine-apply, ver known_bad.json)."""
-    if os.path.isfile(KNOWN_BAD_FILE):
-        try:
-            with open(KNOWN_BAD_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(KNOWN_BAD_FILE, {})
 
 
 def load_hidden_ids():
-    if os.path.isfile(HIDDEN_FILE):
-        try:
-            with open(HIDDEN_FILE, encoding="utf-8") as f:
-                return set(json.load(f))
-        except Exception:
-            return set()
-    return set()
+    return load_json(HIDDEN_FILE, set(), _id_set)
 
 
 def save_hidden_ids(ids):
@@ -224,13 +232,7 @@ def verify_hidden_password(password):
 
 
 def load_favorite_ids():
-    if os.path.isfile(FAVORITES_FILE):
-        try:
-            with open(FAVORITES_FILE, encoding="utf-8") as f:
-                return set(json.load(f))
-        except Exception:
-            return set()
-    return set()
+    return load_json(FAVORITES_FILE, set(), _id_set)
 
 
 def save_favorite_ids(ids):
@@ -240,13 +242,7 @@ def save_favorite_ids(ids):
 
 def load_recent_ids():
     """Devuelve los ids aplicados recientemente, mas reciente primero."""
-    if os.path.isfile(RECENTS_FILE):
-        try:
-            with open(RECENTS_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+    return load_json(RECENTS_FILE, [])
 
 
 def record_recent(wid):
@@ -259,13 +255,7 @@ def record_recent(wid):
 
 
 def load_ui_state():
-    if os.path.isfile(UI_STATE_FILE):
-        try:
-            with open(UI_STATE_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(UI_STATE_FILE, {})
 
 
 def save_ui_state(state):
@@ -274,13 +264,7 @@ def save_ui_state(state):
 
 
 def load_playlists():
-    if os.path.isfile(PLAYLISTS_FILE):
-        try:
-            with open(PLAYLISTS_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(PLAYLISTS_FILE, {})
 
 
 def save_playlists(data):
@@ -290,13 +274,7 @@ def save_playlists(data):
 
 def load_scaling():
     """Modo de escalado guardado por pantalla, { "PANTALLA": "fill"|"fit"|"stretch"|"default" }."""
-    if os.path.isfile(SCALING_FILE):
-        try:
-            with open(SCALING_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(SCALING_FILE, {})
 
 
 def save_scaling(data):
@@ -307,13 +285,7 @@ def save_scaling(data):
 def load_properties():
     """Overrides de propiedades personalizables guardados por wallpaper,
     { "wallpaper_id": { "propkey": "valor" } } (ver wpelib/properties.py)."""
-    if os.path.isfile(PROPERTIES_FILE):
-        try:
-            with open(PROPERTIES_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(PROPERTIES_FILE, {})
 
 
 def save_properties(data):
@@ -329,13 +301,7 @@ def load_audio():
     al audio del sistema (eso lo controla --no-audio-processing, que esta app
     nunca pasa, asi que la reactividad al audio funciona independientemente de
     si esta silenciado o no)."""
-    if os.path.isfile(AUDIO_FILE):
-        try:
-            with open(AUDIO_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(AUDIO_FILE, {})
 
 
 def save_audio(data):
@@ -349,13 +315,7 @@ def load_speed():
     parchea GLPlayer para llamar mpv_set_property(handle, "speed", ...) — solo
     afecta a wallpapers de tipo Video o con video incrustado; en una escena sin
     video no tiene ningun efecto. 1.0 (normal) si no hay nada guardado."""
-    if os.path.isfile(SPEED_FILE):
-        try:
-            with open(SPEED_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return load_json(SPEED_FILE, {})
 
 
 def save_speed(data):

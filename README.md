@@ -504,3 +504,7 @@ problema, se regeneran solas).
 
 MIT. `linux-wallpaperengine` tiene su propia licencia (ver su repositorio); el contenido del
 Workshop pertenece a sus respectivos autores.
+
+## Tests
+
+    python3 -m unittest discover -s tests -t .

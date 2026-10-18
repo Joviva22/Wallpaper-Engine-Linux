@@ -67,7 +67,8 @@ VENDOR_EFFECTS = {
 
 
 def _unpack(path):
-    data = open(path, "rb").read()
+    with open(path, "rb") as f:
+        data = f.read()
     pos = 0
     hdr_len = struct.unpack_from("<I", data, pos)[0]; pos += 4
     header = data[pos:pos + hdr_len]; pos += hdr_len
