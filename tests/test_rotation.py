@@ -144,6 +144,61 @@ class RotationTest(unittest.TestCase):
         self.assertIn("preset", problems["4"])
         self.assertIn("instalado", problems["999"])
 
+    # --- modo aleatorio sin repetir e historial --------------------------------------------------------
+    def test_random_visits_everything_before_repeating(self):
+        # El fondo actual ("1") cuenta como ya reproducido: la primera ronda son los otros dos, sin repetir.
+        self.playlist(mode="random", items=["1", "3", "5"], current_index=0, interval_minutes=1)
+        seen = [rotation.step("eDP-1", 1, now=1000 + n, apply_fn=self.apply)[1] for n in range(30)]
+        self.assertEqual(sorted(seen[:2]), ["3", "5"])
+        self.assertTrue(all(a != b for a, b in zip(["1"] + seen, seen)))   # nunca el mismo dos veces seguidas
+        self.assertEqual(set(seen), {"1", "3", "5"})                        # y acaban saliendo todos
+        # dentro de cada ronda no hay repeticiones: tras cada fondo, el bolsillo solo contiene los que faltan
+        self.assertTrue(set(self.state().get("bag", [])) <= {"1", "3", "5"} - {seen[-1]})
+
+    def test_random_never_repeats_the_current_across_rounds_with_two_items(self):
+        self.playlist(mode="random", items=["1", "3"], current_index=0)
+        seen = [rotation.step("eDP-1", 1, now=n, apply_fn=self.apply)[1] for n in range(8)]
+        self.assertTrue(all(a != b for a, b in zip(["1"] + seen, seen)))
+
+    def test_random_with_a_single_playable_item_keeps_it(self):
+        self.web = False
+        self.playlist(mode="random", items=["2", "1"], current_index=0)
+        self.assertEqual(rotation.step("eDP-1", 1, apply_fn=self.apply), (True, "1"))
+        self.assertEqual(rotation.step("eDP-1", 1, apply_fn=self.apply), (True, "1"))
+
+    def test_random_back_follows_the_real_history(self):
+        self.playlist(mode="random", items=["1", "3", "5"], current_index=0)
+        first = rotation.step("eDP-1", 1, now=1, apply_fn=self.apply)[1]
+        second = rotation.step("eDP-1", 1, now=2, apply_fn=self.apply)[1]
+        self.assertEqual(self.state()["history"], [first, second])
+        self.assertEqual(rotation.step("eDP-1", -1, now=3, apply_fn=self.apply), (True, first))
+        self.assertEqual(self.state()["history"], [first])
+        self.assertEqual(self.state()["current_index"], ["1", "3", "5"].index(first))
+
+    def test_history_is_recorded_in_order_mode_and_capped(self):
+        self.playlist(items=["1", "3", "5"])
+        for n in range(rotation.HISTORY_LIMIT + 10):
+            rotation.step("eDP-1", 1, now=n, apply_fn=self.apply)
+        self.assertEqual(len(self.state()["history"]), rotation.HISTORY_LIMIT)
+        self.assertEqual(rotation.status("eDP-1", now=0)["history"], self.state()["history"][-6:])
+
+    def test_tick_uses_random_mode_and_status_hides_unknown_next(self):
+        self.playlist(mode="random", items=["1", "3", "5"])
+        info = rotation.status("eDP-1", now=0)
+        self.assertEqual((info["mode"], info["next"], info["can_rotate"]), ("random", None, True))
+        rotation.tick(now=1000, apply_fn=self.apply)
+        self.assertEqual(len(self.applied), 1)
+        self.assertIn("bag", self.state())
+        self.assertEqual(len(self.state()["bag"]), 1)  # el actual no entra en la ronda
+
+    def test_save_playlists_keeps_daemon_history_and_bag(self):
+        self.playlist(mode="random", items=["1", "3"], history=["1", "3"], bag=["1"])
+        edited = {"eDP-1": {"enabled": True, "interval_minutes": 5, "items": ["1", "3"], "mode": "order",
+                            "current_index": 0, "last_switch": 0}}
+        config.save_playlists(edited)
+        saved = self.state()
+        self.assertEqual((saved["history"], saved["bag"], saved["mode"]), (["1", "3"], ["1"], "order"))
+
 
 if __name__ == "__main__":
     unittest.main()

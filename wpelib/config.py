@@ -334,7 +334,7 @@ def load_playlists():
 
 
 PLAYLISTS_LOCK = os.path.join(CONF_DIR, "playlists.lock")
-PLAYLIST_PROGRESS_KEYS = ("current_index", "last_switch")
+PLAYLIST_PROGRESS_KEYS = ("current_index", "last_switch", "history", "bag")
 
 
 def save_playlists(data, fresh_progress=()):

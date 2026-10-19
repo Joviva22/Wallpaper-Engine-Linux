@@ -48,6 +48,14 @@ class PlaylistWindow(Gtk.Window):
         self.enabled_check = Gtk.CheckButton(label="Activar rotacion en esta pantalla")
         top_box.pack_start(self.enabled_check, False, False, 0)
 
+        top_box.pack_start(Gtk.Label(label="Orden:"), False, False, 0)
+        self.mode_combo = Gtk.ComboBoxText()
+        self.mode_combo.append("order", "En orden")
+        self.mode_combo.append("random", "Aleatorio sin repetir")
+        self.mode_combo.set_tooltip_text("Aleatorio: pasa por todos los fondos antes de repetir ninguno")
+        self.mode_combo.set_active_id("order")
+        top_box.pack_start(self.mode_combo, False, False, 0)
+
         top_box.pack_start(Gtk.Label(label="Intervalo (minutos):"), False, False, 0)
         adjustment = Gtk.Adjustment(value=30, lower=1, upper=1440, step_increment=1, page_increment=10)
         self.interval_spin = Gtk.SpinButton(adjustment=adjustment)
@@ -199,12 +207,16 @@ class PlaylistWindow(Gtk.Window):
             text = "Rotación desactivada en esta pantalla (guarda con la casilla marcada para activarla)."
         elif info["paused"]:
             text = "Rotación en pausa (desde la bandeja)."
-        elif info["next"] is None:
+        elif not info["can_rotate"]:
             text = "Rotación activada, pero ningún fondo de la lista puede rotar."
         else:
             left = info["seconds_left"] or 0
             when = "en unos segundos" if left < 60 else f"en {left // 60} min"
-            text = f"Ahora: {title(info['current'])}  ·  Siguiente: {title(info['next'])}  ·  cambia {when}"
+            following = "aleatorio (sin repetir)" if info["mode"] == "random" else title(info["next"])
+            text = f"Ahora: {title(info['current'])}  ·  Siguiente: {following}  ·  cambia {when}"
+        recent = [title(w) for w in reversed(info["history"][:-1])][:4]
+        if recent:
+            text += "\nAntes: " + "  ←  ".join(recent)
         self.rotation_label.set_text(text)
         return True
 
@@ -238,6 +250,7 @@ class PlaylistWindow(Gtk.Window):
     def load_monitor_playlist(self, monitor):
         data = self.playlists.get(monitor, {})
         self.enabled_check.set_active(bool(data.get("enabled", False)))
+        self.mode_combo.set_active_id("random" if data.get("mode") == "random" else "order")
         self.interval_spin.set_value(data.get("interval_minutes", 30))
         self.playlist_store.clear()
         for wid in data.get("items", []):
@@ -254,6 +267,7 @@ class PlaylistWindow(Gtk.Window):
         self.playlists[monitor] = {
             "enabled": self.enabled_check.get_active(),
             "interval_minutes": int(self.interval_spin.get_value()),
+            "mode": self.mode_combo.get_active_id() or "order",
             "items": items,
             "current_index": previous.get("current_index", 0),
             "last_switch": previous.get("last_switch", 0),
