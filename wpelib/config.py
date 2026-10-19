@@ -232,6 +232,11 @@ def detect_monitors():
     return [line.split()[-1] for line in lines if line.strip()]
 
 
+def monitor_changes(old, new):
+    """(conectadas, desconectadas) entre dos listas de nombres de pantalla, conservando el orden."""
+    return [m for m in new if m not in old], [m for m in old if m not in new]
+
+
 def load_current_assignments(monitors):
     assignments = load_json(CURRENT_FILE, {})
     for mon in monitors:

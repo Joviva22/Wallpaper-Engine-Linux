@@ -14,7 +14,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf, GLib, Gdk, Pango
 
 from .config import (
-    atomic_write_json, load_json, CONF_DIR,
+    atomic_write_json, load_json, CONF_DIR, CURRENT_FILE, DEFAULT_ID, monitor_changes,
     web_wallpapers_allowed, set_web_wallpapers_allowed,
     load_wallpapers, detect_monitors, load_current_assignments, load_hidden_ids,
     save_hidden_ids, load_favorite_ids, save_favorite_ids, load_recent_ids, record_recent,
@@ -247,6 +247,7 @@ class PickerWindow(Gtk.Window):
                             for mon in self.monitors}
         self.live_preview = LivePreview()
         self._apply_poll = GLib.timeout_add(1000, self._poll_apply_status)
+        self._monitor_poll = GLib.timeout_add_seconds(3, self._poll_monitors)
         GLib.idle_add(self.populate)
 
     # -- Construccion de la interfaz ------------------------------------------
@@ -277,20 +278,9 @@ class PickerWindow(Gtk.Window):
         monitors_title.get_style_context().add_class("wpe-detail-section-title")
         sidebar.pack_start(monitors_title, False, False, 0)
 
-        self.sidebar_monitor_radios = {}
-        self.sidebar_monitor_subtitles = {}
-        first_mon = None
-        for mon in self.monitors:
-            btn, subtitle_label = make_nav_radio(
-                first_mon, "video-display-symbolic", mon, subtitle=self._monitor_subtitle(mon)
-            )
-            if first_mon is None:
-                first_mon = btn
-            btn.set_active(mon == self.target_monitor)
-            btn.connect("toggled", self.on_monitor_nav_toggled, mon)
-            sidebar.pack_start(btn, False, False, 0)
-            self.sidebar_monitor_radios[mon] = btn
-            self.sidebar_monitor_subtitles[mon] = subtitle_label
+        self.sidebar_monitors_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        sidebar.pack_start(self.sidebar_monitors_box, False, False, 0)
+        self._fill_sidebar_monitors()
 
         sidebar.pack_start(Gtk.Box(), True, True, 0)  # empuja "Ajustes" abajo
 
@@ -337,21 +327,10 @@ class PickerWindow(Gtk.Window):
         box.pack_start(title, False, False, 0)
 
         chips_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        self.monitor_chips = {}
-        self.monitor_chip_subtitles = {}
-        first = None
-        for mon in self.monitors:
-            chip, subtitle_label = make_nav_radio(
-                first, "video-display-symbolic", mon, subtitle=self._monitor_subtitle(mon)
-            )
-            if first is None:
-                first = chip
-            chip.get_style_context().add_class("wpe-chip")
-            chip.set_active(mon == self.target_monitor)
-            chip.connect("toggled", self.on_monitor_chip_toggled, mon)
-            chips_box.pack_start(chip, False, False, 0)
-            self.monitor_chips[mon] = chip
-            self.monitor_chip_subtitles[mon] = subtitle_label
+        # solo las pantallas viven en este contenedor interno, para poder reconstruirlas sin tocar "Reproducción"
+        self.chips_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        chips_box.pack_start(self.chips_box, False, False, 0)
+        self._fill_chips()
 
         playback_btn = Gtk.MenuButton(label="Reproducción")
         playback_btn.set_tooltip_text("Escalado, audio y velocidad del monitor activo")
@@ -857,6 +836,80 @@ class PickerWindow(Gtk.Window):
             label_widget = labels.get(mon)
             if label_widget:
                 label_widget.set_text(text)
+
+    def _fill_sidebar_monitors(self):
+        for child in self.sidebar_monitors_box.get_children():
+            child.destroy()
+        self.sidebar_monitor_radios = {}
+        self.sidebar_monitor_subtitles = {}
+        first_mon = None
+        for mon in self.monitors:
+            btn, subtitle_label = make_nav_radio(
+                first_mon, "video-display-symbolic", mon, subtitle=self._monitor_subtitle(mon)
+            )
+            if first_mon is None:
+                first_mon = btn
+            btn.set_active(mon == self.target_monitor)
+            btn.connect("toggled", self.on_monitor_nav_toggled, mon)
+            self.sidebar_monitors_box.pack_start(btn, False, False, 0)
+            self.sidebar_monitor_radios[mon] = btn
+            self.sidebar_monitor_subtitles[mon] = subtitle_label
+        self.sidebar_monitors_box.show_all()
+
+    def _fill_chips(self):
+        for child in self.chips_box.get_children():
+            child.destroy()
+        self.monitor_chips = {}
+        self.monitor_chip_subtitles = {}
+        first = None
+        for mon in self.monitors:
+            chip, subtitle_label = make_nav_radio(
+                first, "video-display-symbolic", mon, subtitle=self._monitor_subtitle(mon)
+            )
+            if first is None:
+                first = chip
+            chip.get_style_context().add_class("wpe-chip")
+            chip.set_active(mon == self.target_monitor)
+            chip.connect("toggled", self.on_monitor_chip_toggled, mon)
+            self.chips_box.pack_start(chip, False, False, 0)
+            self.monitor_chips[mon] = chip
+            self.monitor_chip_subtitles[mon] = subtitle_label
+        self.chips_box.show_all()
+
+    def _poll_monitors(self):
+        """Detecta pantallas que se conectan o desconectan sin reiniciar la app."""
+        found = detect_monitors()
+        added, removed = monitor_changes(self.monitors, found)
+        if found and (added or removed):
+            self._on_monitors_changed(found, added, removed)
+        return True
+
+    def _on_monitors_changed(self, found, added, removed):
+        self.monitors = found
+        if self.target_monitor not in found:
+            self.target_monitor = found[0]
+        self.assignments = load_current_assignments(found)
+        for mon in added:
+            self._apply_seen[mon] = load_json(os.path.join(CONF_DIR, f"status_{mon}.json"), {}).get("token")
+        self._fill_sidebar_monitors()
+        self._fill_chips()
+        self._set_target_monitor(self.target_monitor)
+        notes = []
+        if added:
+            notes.append("conectada " + ", ".join(added))
+        if removed:
+            notes.append("desconectada " + ", ".join(removed))
+        # Una pantalla recien conectada recupera el fondo que tenia asignado.
+        restored = []
+        for mon in added:
+            wid = load_json(CURRENT_FILE, {}).get(mon)
+            if wid and wid != DEFAULT_ID and wid in self.items_by_id:
+                subprocess.Popen([APPLY_SCRIPT, f"{mon}={wid}"], stdin=subprocess.DEVNULL)
+                restored.append(f"{mon} → {self.items_by_id[wid]['title']}")
+        text = "Pantalla " + "; ".join(notes)
+        if restored:
+            text += ". Restaurando: " + ", ".join(restored)
+        self.status_label.set_text(text)
 
     def on_monitor_chip_toggled(self, chip, mon):
         if chip.get_active():
@@ -1703,6 +1756,7 @@ class PickerWindow(Gtk.Window):
     def on_destroy(self, widget):
         self.live_preview.stop()
         GLib.source_remove(self._apply_poll)
+        GLib.source_remove(self._monitor_poll)
         self.save_current_ui_state()
 
 
