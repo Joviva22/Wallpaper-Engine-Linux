@@ -31,7 +31,7 @@ from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
 from .properties_window import PropertiesDialog
 from .stage_window import StageCharactersWindow
-from . import compat
+from . import compat, diagnostics
 from .live_preview import LivePreview, PREVIEW_SECONDS
 from .repair import attempt_repair, attempt_repair_all
 
@@ -465,6 +465,7 @@ class PickerWindow(Gtk.Window):
         box.pack_start(Gtk.Separator(), False, False, 2)
         add_action("Desactivar fondos web", "dialog-password-symbolic", self._disable_web_wallpapers)
         add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
+        add_action("Diagnóstico...", "dialog-information-symbolic", self._open_diagnostics)
         box.pack_start(Gtk.Separator(), False, False, 2)
         add_action("Nikke Stage: personajes...", "avatar-default-symbolic", self._open_stage_characters)
         box.show_all()
@@ -1533,6 +1534,45 @@ class PickerWindow(Gtk.Window):
             self.status_label.set_text("Ya estaba en la rotacion de esa pantalla")
 
     # -- Ventanas secundarias --------------------------------------------------
+
+    def _open_diagnostics(self, _button=None):
+        """Informe de estado (pantallas, fallos, rotación y registro del motor) para leer o copiar."""
+        dialog = Gtk.Dialog(title="Diagnóstico", transient_for=self, modal=False)
+        dialog.set_default_size(820, 560)
+        box = dialog.get_content_area()
+        box.set_border_width(10)
+        box.set_spacing(8)
+        buffer = Gtk.TextBuffer()
+        view = Gtk.TextView(buffer=buffer, editable=False, monospace=True)
+        view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_shadow_type(Gtk.ShadowType.IN)
+        scrolled.add(view)
+        box.pack_start(scrolled, True, True, 0)
+        note = Gtk.Label(label="Sin claves ni datos privados: la carpeta personal aparece como ~.", xalign=0)
+        note.get_style_context().add_class("dim-label")
+        box.pack_start(note, False, False, 0)
+
+        def refresh(*_):
+            buffer.set_text(diagnostics.build_report())
+
+        def copy(*_):
+            clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter(), False), -1)
+            clipboard.store()
+            note.set_text("Informe copiado al portapapeles.")
+
+        def open_folder(*_):
+            subprocess.Popen(["xdg-open", CONF_DIR], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+
+        dialog.add_button("Abrir carpeta de registros", 1).connect("clicked", open_folder)
+        dialog.add_button("Actualizar", 2).connect("clicked", refresh)
+        dialog.add_button("Copiar informe", 3).connect("clicked", copy)
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda d, r: d.destroy() if r == Gtk.ResponseType.CLOSE else None)
+        refresh()
+        dialog.show_all()
 
     def _open_stage_characters(self, _button=None):
         """Ventana para descargar y quitar los personajes del wallpaper Nikke Stage."""
