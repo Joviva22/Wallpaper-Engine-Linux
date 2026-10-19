@@ -433,6 +433,26 @@ def save_speed(data):
     atomic_write_json(SPEED_FILE, data)
 
 
+FPS_OPTIONS = (15, 24, 30, 60)
+DEFAULT_FPS = 30
+
+
+def load_fps():
+    """Fotogramas por segundo del motor (se aplica al lanzar cada wallpaper)."""
+    value = load_json(CONFIG_FILE, {}).get("fps")
+    return value if value in FPS_OPTIONS else DEFAULT_FPS
+
+
+def set_fps(fps):
+    if fps not in FPS_OPTIONS:
+        raise ValueError(f"fps no válido: {fps!r}")
+    with FileLock(os.path.join(CONF_DIR, "config.lock")):
+        cfg = load_config()
+        cfg["fps"] = fps
+        save_config(cfg)
+        CONFIG.update(cfg)
+
+
 def unsubscribe_workshop_item(wid):
     """Borra el contenido local del wallpaper y lo quita de cualquier lista de
     rotacion. No es un unsubscribe real en Steam (eso requiere el cliente

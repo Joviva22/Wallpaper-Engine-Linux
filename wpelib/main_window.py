@@ -24,6 +24,7 @@ from .config import (
     load_properties, save_properties, KNOWN_BAD_FILE,
     load_audio, save_audio, DEFAULT_VOLUME,
     load_speed, save_speed, SPEED_OPTIONS, DEFAULT_SPEED, engine_supports_speed,
+    load_fps, set_fps, FPS_OPTIONS,
     has_hidden_password, set_hidden_password, clear_hidden_password, verify_hidden_password,
 )
 from .ui import icon_button, open_in_steam, apply_css, WallpaperCard, CARD_SIZE
@@ -31,7 +32,7 @@ from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
 from .properties_window import PropertiesDialog
 from .stage_window import StageCharactersWindow
-from . import cleanup, compat, diagnostics
+from . import cleanup, compat, diagnostics, profiles
 from .live_preview import LivePreview, PREVIEW_SECONDS
 from .repair import attempt_repair, attempt_repair_all, list_repairs, undo_repair
 
@@ -394,6 +395,15 @@ class PickerWindow(Gtk.Window):
                 "Tu version de linux-wallpaperengine no soporta --speed (requiere un motor parcheado)")
         controls.pack_start(self.speed_combo, False, False, 0)
 
+        controls.pack_start(Gtk.Label(label="Fotogramas por segundo (todas las pantallas):"), False, False, 0)
+        self.fps_combo = Gtk.ComboBoxText()
+        for fps in FPS_OPTIONS:
+            self.fps_combo.append(str(fps), f"{fps} fps")
+        self.fps_combo.set_active_id(str(load_fps()))
+        self.fps_combo.set_tooltip_text("Menos fps gasta menos batería y GPU. Se aplica al lanzar cada wallpaper.")
+        self.fps_combo.connect("changed", lambda c: set_fps(int(c.get_active_id())) if c.get_active_id() else None)
+        controls.pack_start(self.fps_combo, False, False, 0)
+
         controls.show_all()
 
         box.pack_start(chips_box, False, False, 0)
@@ -445,6 +455,7 @@ class PickerWindow(Gtk.Window):
         add_action("Desactivar fondos web", "dialog-password-symbolic", self._disable_web_wallpapers)
         add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
         add_action("Diagnóstico...", "dialog-information-symbolic", self._open_diagnostics)
+        add_action("Perfiles de escritorio...", "preferences-desktop-symbolic", self._open_profiles)
         add_action("Reparaciones (deshacer)...", "edit-undo-symbolic", self._open_repairs)
         add_action("Limpiar espacio...", "edit-clear-all-symbolic", self._open_cleanup)
         box.pack_start(Gtk.Separator(), False, False, 2)
@@ -1589,6 +1600,97 @@ class PickerWindow(Gtk.Window):
             self.status_label.set_text("Ya estaba en la rotacion de esa pantalla")
 
     # -- Ventanas secundarias --------------------------------------------------
+
+    def _open_profiles(self, _button=None):
+        """Perfiles ("Trabajo", "Juego"...): guardan y recuperan fondos, audio, escalado, rotación y fps."""
+        dialog = Gtk.Dialog(title="Perfiles de escritorio", transient_for=self, modal=False)
+        dialog.set_default_size(520, 420)
+        box = dialog.get_content_area()
+        box.set_border_width(10)
+        box.set_spacing(8)
+        intro = Gtk.Label(
+            label="Un perfil guarda, para tus pantallas, el fondo de cada una, el audio, el escalado, la velocidad, "
+                  "la rotación (activa, intervalo y orden) y los fps. Las listas de rotación no se tocan.", xalign=0)
+        intro.set_line_wrap(True)
+        box.pack_start(intro, False, False, 0)
+        store = Gtk.ListStore(str, str)
+        view = Gtk.TreeView(model=store)
+        view.set_headers_visible(False)
+        view.append_column(Gtk.TreeViewColumn("Perfil", Gtk.CellRendererText(), text=0))
+        view.append_column(Gtk.TreeViewColumn("Contenido", Gtk.CellRendererText(foreground="#888888"), text=1))
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_shadow_type(Gtk.ShadowType.IN)
+        scrolled.set_vexpand(True)
+        scrolled.add(view)
+        box.pack_start(scrolled, True, True, 0)
+        note = Gtk.Label(xalign=0)
+        note.set_line_wrap(True)
+        box.pack_start(note, False, False, 0)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        entry = Gtk.Entry()
+        entry.set_placeholder_text("Nombre del perfil (Trabajo, Juego, Batería...)")
+        row.pack_start(entry, True, True, 0)
+        save_btn = Gtk.Button(label="Guardar el estado actual")
+        row.pack_start(save_btn, False, False, 0)
+        box.pack_start(row, False, False, 0)
+
+        def selected():
+            model, it = view.get_selection().get_selected()
+            return model[it][0] if it else None
+
+        def refresh():
+            store.clear()
+            for name, data in sorted(profiles.load_profiles().items()):
+                shots = len(data.get("assignments", {}))
+                store.append([name, f"{shots} pantalla(s) · {data.get('fps', '?')} fps"])
+
+        def save(*_):
+            try:
+                name = profiles.save_profile(entry.get_text(), self.monitors)
+            except ValueError as error:
+                note.set_text(str(error))
+                return
+            note.set_text(f"Perfil «{name}» guardado con el estado actual.")
+            refresh()
+
+        def apply_selected(*_):
+            name = selected()
+            if not name:
+                note.set_text("Selecciona un perfil de la lista.")
+                return
+            ok, screens, notes = profiles.apply_profile(name, self.monitors, set(self.items_by_id))
+            if not ok:
+                note.set_text(notes[0])
+                return
+            self.fps_combo.set_active_id(str(load_fps()))
+            self.scaling = load_scaling()
+            self.audio = load_audio()
+            self.speed = load_speed()
+            self._sync_scaling_combo()
+            self._sync_audio_widgets()
+            self._sync_speed_combo()
+            text = f"Perfil «{name}» aplicado" + (f" en {', '.join(screens)}" if screens else "") + "."
+            if notes:
+                text += " " + " ".join(notes)
+            note.set_text(text)
+            self.status_label.set_text(text)
+
+        def delete(*_):
+            name = selected()
+            if name and profiles.delete_profile(name):
+                note.set_text(f"Perfil «{name}» borrado.")
+                refresh()
+
+        save_btn.connect("clicked", save)
+        entry.connect("activate", save)
+        view.connect("row-activated", apply_selected)
+        dialog.add_button("Borrar", 3).connect("clicked", delete)
+        dialog.add_button("Aplicar el perfil", 2).connect("clicked", apply_selected)
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda d, r: d.destroy() if r == Gtk.ResponseType.CLOSE else None)
+        refresh()
+        dialog.show_all()
 
     def _open_repairs(self, _button=None):
         """Lista los wallpapers reparados por la app y permite devolver cada uno a su estado original."""

@@ -159,7 +159,7 @@ def engine_env(wid):
 
 def engine_command(screen, wid):
     return [
-        config.engine_executable(), "--assets-dir", config.ASSETS_DIR, "--fps", "30",
+        config.engine_executable(), "--assets-dir", config.ASSETS_DIR, "--fps", str(config.load_fps()),
         "--screen-root", screen, "--bg", os.path.join(config.WORKSHOP_DIR, wid),
         "--scaling", scaling_for(screen), "--clamp", "border",
         *audio_args(screen), *property_args(wid), *speed_args(screen),
