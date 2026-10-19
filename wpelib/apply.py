@@ -266,7 +266,7 @@ def try_auto_repair(wid, logfile, log_offset, repairable=None):
     if not (log_is_repairable(logfile, log_offset) if repairable is None else repairable):
         return False
     from . import repair
-    changed, message = repair.attempt_repair(wid)
+    changed, message = repair.attempt_repair(wid, automatic=True)
     append_bounded(logfile, f"[wallpaperengine-picker] auto-reparacion de {wid}: {message}\n".encode(), MAX_LOG_BYTES)
     return changed
 

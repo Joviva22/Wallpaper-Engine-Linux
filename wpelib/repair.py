@@ -24,6 +24,7 @@ import re
 import shutil
 import struct
 import tempfile
+from datetime import datetime
 
 from . import config
 from .config import WORKSHOP_DIR
@@ -434,7 +435,93 @@ def _repair_project_json(folder):
     return fixed
 
 
-def attempt_repair(wid, fix_project=True):
+REPAIRED_FILES = ("scene.pkg", "project.json")
+
+
+def _log_file():
+    return os.path.join(config.CONF_DIR, "repairs.json")
+
+
+def _disabled_file():
+    return os.path.join(config.CONF_DIR, "repair_disabled.json")
+
+
+def repairs_disabled():
+    """Ids cuya reparación se deshizo a propósito: no se vuelven a reparar solos."""
+    data = config.load_json(_disabled_file(), [])
+    return {w for w in data if isinstance(w, str)} if isinstance(data, list) else set()
+
+
+def _set_disabled(wid, disabled):
+    with config.FileLock(os.path.join(config.CONF_DIR, "repair_disabled.lock")):
+        current = repairs_disabled()
+        (current.add if disabled else current.discard)(wid)
+        config.atomic_write_json(_disabled_file(), sorted(current))
+
+
+def _log_repair(wid, message):
+    with config.FileLock(os.path.join(config.CONF_DIR, "repairs.lock")):
+        data = config.load_json(_log_file(), {})
+        data = data if isinstance(data, dict) else {}
+        data[wid] = {"at": datetime.now().astimezone().isoformat(timespec="seconds"), "summary": message[:400]}
+        config.atomic_write_json(_log_file(), data)
+
+
+def list_repairs():
+    """Wallpapers con una reparación deshacible (tienen copia *.bak_original), más reciente primero.
+    Cada entrada: {id, files, at, summary}. `at`/`summary` vienen del registro, o de la fecha de la copia
+    si la reparación es anterior al registro."""
+    log = config.load_json(_log_file(), {})
+    log = log if isinstance(log, dict) else {}
+    found = []
+    for wid in scan_library_ids():
+        files, newest = [], 0
+        for name in REPAIRED_FILES:
+            backup = os.path.join(WORKSHOP_DIR, wid, name + ".bak_original")
+            if os.path.isfile(backup):
+                files.append(name)
+                newest = max(newest, os.path.getmtime(backup))
+        if files:
+            entry = log.get(wid) if isinstance(log.get(wid), dict) else {}
+            at = entry.get("at") or datetime.fromtimestamp(newest).astimezone().isoformat(timespec="seconds")
+            found.append({"id": wid, "files": files, "at": at, "summary": entry.get("summary", "")})
+    return sorted(found, key=lambda e: e["at"], reverse=True)
+
+
+def undo_repair(wid):
+    """Devuelve el wallpaper a su estado original (restaura *.bak_original) y evita que se repare solo otra
+    vez. Devuelve (True, mensaje) o (False, motivo). Es seguro con el wallpaper en uso: se sustituye cada
+    archivo de forma atómica."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(wid))
+    folder = os.path.join(WORKSHOP_DIR, str(wid))
+    if not re.fullmatch(r"[0-9]+", str(wid)) or not os.path.isdir(folder):
+        return False, "Wallpaper no encontrado."
+    with config.FileLock(os.path.join(config.CONF_DIR, f"repair_{safe}.lock")):
+        restored = []
+        for name in REPAIRED_FILES:
+            target = os.path.join(folder, name)
+            backup = target + ".bak_original"
+            if not os.path.isfile(backup):
+                continue
+            try:
+                with open(backup, "rb") as f:
+                    data = f.read()
+                _atomic_write_bytes(target, data)
+                os.remove(backup)
+            except OSError as e:
+                return False, f"No se pudo restaurar {name}: {e}"
+            restored.append(name)
+        if not restored:
+            return False, "No hay ninguna copia original que restaurar."
+    _set_disabled(wid, True)
+    with config.FileLock(os.path.join(config.CONF_DIR, "repairs.lock")):
+        log = config.load_json(_log_file(), {})
+        if isinstance(log, dict) and log.pop(wid, None) is not None:
+            config.atomic_write_json(_log_file(), log)
+    return True, f"Restaurado el original de {', '.join(restored)}. No se volverá a reparar solo."
+
+
+def attempt_repair(wid, fix_project=True, automatic=False):
     """Intenta reparar un wallpaper aplicando los patrones de incompatibilidad
     conocidos, en project.json (propiedades combo) y en scene.pkg. Guarda SIEMPRE una
     copia del original la primera vez (*.bak_original) antes de tocar nada. Es seguro
@@ -443,8 +530,16 @@ def attempt_repair(wid, fix_project=True):
     wallpapers que de verdad fallan, para no alterar los que ya funcionan).
     Devuelve (huboCambios: bool, mensaje: str)."""
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(wid))
+    # Un fondo cuya reparación se deshizo no se repara solo; sí a petición del usuario (y se reactiva).
+    if automatic and wid in repairs_disabled():
+        return False, "La reparación de este wallpaper se deshizo a propósito; repáralo a mano si quieres."
     with config.FileLock(os.path.join(config.CONF_DIR, f"repair_{safe}.lock")):
-        return _attempt_repair_locked(wid, fix_project)
+        changed, message = _attempt_repair_locked(wid, fix_project)
+    if changed:
+        _log_repair(wid, message)
+        if not automatic and wid in repairs_disabled():
+            _set_disabled(wid, False)
+    return changed, message
 
 
 def _attempt_repair_locked(wid, fix_project=True):
@@ -538,7 +633,7 @@ def attempt_repair_all(progress_callback=None):
     for i, wid in enumerate(ids):
         if progress_callback:
             progress_callback(i, len(ids), wid)
-        ok, _msg = attempt_repair(wid, fix_project=wid in known_bad)
+        ok, _msg = attempt_repair(wid, fix_project=wid in known_bad, automatic=True)
         if ok:
             repaired.append(wid)
     return repaired, len(ids)

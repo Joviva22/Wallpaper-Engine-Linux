@@ -33,7 +33,7 @@ from .properties_window import PropertiesDialog
 from .stage_window import StageCharactersWindow
 from . import cleanup, compat, diagnostics
 from .live_preview import LivePreview, PREVIEW_SECONDS
-from .repair import attempt_repair, attempt_repair_all
+from .repair import attempt_repair, attempt_repair_all, list_repairs, undo_repair
 
 TABS = ["Todos", "Favoritos", "Recientes", "Animados", "Ocultos"]
 SCALING_LABELS = {
@@ -445,6 +445,7 @@ class PickerWindow(Gtk.Window):
         add_action("Desactivar fondos web", "dialog-password-symbolic", self._disable_web_wallpapers)
         add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
         add_action("Diagnóstico...", "dialog-information-symbolic", self._open_diagnostics)
+        add_action("Reparaciones (deshacer)...", "edit-undo-symbolic", self._open_repairs)
         add_action("Limpiar espacio...", "edit-clear-all-symbolic", self._open_cleanup)
         box.pack_start(Gtk.Separator(), False, False, 2)
         add_action("Nikke Stage: personajes...", "avatar-default-symbolic", self._open_stage_characters)
@@ -1588,6 +1589,62 @@ class PickerWindow(Gtk.Window):
             self.status_label.set_text("Ya estaba en la rotacion de esa pantalla")
 
     # -- Ventanas secundarias --------------------------------------------------
+
+    def _open_repairs(self, _button=None):
+        """Lista los wallpapers reparados por la app y permite devolver cada uno a su estado original."""
+        dialog = Gtk.Dialog(title="Reparaciones", transient_for=self, modal=False)
+        dialog.set_default_size(760, 480)
+        box = dialog.get_content_area()
+        box.set_border_width(10)
+        box.set_spacing(8)
+        intro = Gtk.Label(
+            label="Wallpapers que la app ha reparado (guarda una copia del original). Al deshacer, se restaura el "
+                  "original y ese wallpaper no se volverá a reparar solo; puedes repararlo a mano cuando quieras.",
+            xalign=0)
+        intro.set_line_wrap(True)
+        box.pack_start(intro, False, False, 0)
+        store = Gtk.ListStore(str, str, str, str, str)  # id, titulo, fecha, archivos, resumen
+        view = Gtk.TreeView(model=store)
+        for number, title in enumerate(("Wallpaper", "Fecha", "Archivos", "Qué se cambió"), 1):
+            column = Gtk.TreeViewColumn(title, Gtk.CellRendererText(ellipsize=Pango.EllipsizeMode.END), text=number)
+            column.set_resizable(True)
+            column.set_expand(number in (1, 4))
+            view.append_column(column)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_shadow_type(Gtk.ShadowType.IN)
+        scrolled.add(view)
+        box.pack_start(scrolled, True, True, 0)
+        note = Gtk.Label(xalign=0)
+        box.pack_start(note, False, False, 0)
+
+        def refresh():
+            store.clear()
+            for entry in list_repairs():
+                when = entry["at"][:16].replace("T", " ")
+                title = self.items_by_id.get(entry["id"], {}).get("title", entry["id"])
+                store.append([entry["id"], title, when, ", ".join(entry["files"]),
+                              entry["summary"].replace("Reparado: ", "") or "(reparación anterior al registro)"])
+            note.set_text("" if len(store) else "No hay reparaciones que deshacer.")
+
+        def undo(*_):
+            model, paths = view.get_selection().get_selected_rows()
+            wids = [model[p][0] for p in paths]
+            if not wids:
+                note.set_text("Selecciona un wallpaper de la lista.")
+                return
+            results = [undo_repair(w) for w in wids]
+            failed = [msg for ok, msg in results if not ok]
+            note.set_text(failed[0] if failed else f"Restaurado el original de {len(wids)} wallpaper(s).")
+            self.status_label.set_text(note.get_text())
+            refresh()
+
+        view.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
+        undo_btn = dialog.add_button("Deshacer la reparación seleccionada", 1)
+        undo_btn.connect("clicked", undo)
+        dialog.add_button("Cerrar", Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda d, r: d.destroy() if r == Gtk.ResponseType.CLOSE else None)
+        refresh()
+        dialog.show_all()
 
     def _open_cleanup(self, _button=None):
         """Muestra cuánto ocupa lo que la app puede regenerar y borra lo que elijas."""

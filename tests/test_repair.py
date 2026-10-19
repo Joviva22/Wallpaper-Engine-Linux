@@ -194,6 +194,80 @@ class LockTest(unittest.TestCase):
             repair.WORKSHOP_DIR = old
 
 
+class UndoRepairTest(unittest.TestCase):
+    SCENE = {"objects": [{"text": {}, "padding": "8.0 8.0"}]}
+
+    def setUp(self):
+        from wpelib import config
+        self.config = config
+        self.dir = tempfile.mkdtemp()
+        self._old = (repair.WORKSHOP_DIR, config.CONF_DIR)
+        repair.WORKSHOP_DIR = self.dir
+        config.CONF_DIR = tempfile.mkdtemp()
+        os.mkdir(os.path.join(self.dir, "1"))
+        self.pkg = os.path.join(self.dir, "1", "scene.pkg")
+        build_pkg(self.pkg, {"scene.json": json.dumps(self.SCENE).encode()})
+        with open(self.pkg, "rb") as f:
+            self.original = f.read()
+
+    def tearDown(self):
+        repair.WORKSHOP_DIR, self.config.CONF_DIR = self._old
+
+    def test_repairs_are_listed_with_their_summary(self):
+        self.assertEqual(repair.list_repairs(), [])
+        ok, _ = repair.attempt_repair("1")
+        self.assertTrue(ok)
+        entries = repair.list_repairs()
+        self.assertEqual([(e["id"], e["files"]) for e in entries], [("1", ["scene.pkg"])])
+        self.assertIn("padding", entries[0]["summary"])
+
+    def test_undo_restores_the_exact_original_and_disables_auto_repair(self):
+        repair.attempt_repair("1")
+        with open(self.pkg, "rb") as f:
+            self.assertNotEqual(f.read(), self.original)
+        ok, msg = repair.undo_repair("1")
+        self.assertTrue(ok, msg)
+        with open(self.pkg, "rb") as f:
+            self.assertEqual(f.read(), self.original)
+        self.assertFalse(os.path.exists(self.pkg + ".bak_original"))
+        self.assertEqual(repair.list_repairs(), [])
+        self.assertIn("1", repair.repairs_disabled())
+        # la reparación automática ya no lo toca...
+        changed, why = repair.attempt_repair("1", automatic=True)
+        self.assertFalse(changed)
+        self.assertIn("deshizo", why)
+        with open(self.pkg, "rb") as f:
+            self.assertEqual(f.read(), self.original)
+        # ...pero el usuario puede repararlo a mano, y eso lo reactiva
+        changed, _ = repair.attempt_repair("1")
+        self.assertTrue(changed)
+        self.assertNotIn("1", repair.repairs_disabled())
+
+    def test_undo_without_backup_or_with_bad_id(self):
+        self.assertFalse(repair.undo_repair("1")[0])
+        self.assertFalse(repair.undo_repair("999")[0])
+        self.assertFalse(repair.undo_repair("../etc")[0])
+
+    def test_undo_project_json_too(self):
+        project = os.path.join(self.dir, "1", "project.json")
+        with open(project, "w") as f:
+            f.write('{"original": true}')
+        with open(project + ".bak_original", "w") as f:
+            f.write('{"original": true}')
+        with open(project, "w") as f:
+            f.write('{"repaired": true}')
+        ok, _ = repair.undo_repair("1")
+        self.assertTrue(ok)
+        with open(project) as f:
+            self.assertEqual(json.load(f), {"original": True})
+
+    def test_repair_all_skips_wallpapers_whose_repair_was_undone(self):
+        repair.attempt_repair("1")
+        repair.undo_repair("1")
+        repaired, total = repair.attempt_repair_all()
+        self.assertEqual((repaired, total), ([], 1))
+
+
 class RepairTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
