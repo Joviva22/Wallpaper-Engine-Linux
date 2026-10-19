@@ -8,12 +8,14 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
-from . import nikke_stage
+from . import nikke_stage, nikke_voices
 from .l2d_pack import PackError
 
 
 class StageCharactersWindow(Gtk.Window):
-    COL_INSTALLED, COL_CODE, COL_NAME, COL_PACK = range(4)
+    COL_INSTALLED, COL_CODE, COL_NAME, COL_PACK, COL_VOICES = range(5)
+    VOICE_LANGS = ("auto", "jp", "en", "cn")
+    VOICE_LABELS = {"auto": "Voces: la que haya", "jp": "Voces: japonés", "en": "Voces: inglés", "cn": "Voces: chino"}
 
     def __init__(self, on_done=None):
         super().__init__(title="Nikke Stage: personajes")
@@ -42,14 +44,14 @@ class StageCharactersWindow(Gtk.Window):
         search_row.pack_start(self.only_installed, False, False, 0)
         box.pack_start(search_row, False, False, 0)
 
-        self.store = Gtk.ListStore(bool, str, str, str)
+        self.store = Gtk.ListStore(bool, str, str, str, str)
         self.filter = self.store.filter_new()
         self.filter.set_visible_func(self._visible)
         self.view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.filter))
         self.view.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         toggle = Gtk.CellRendererToggle()
         self.view.append_column(Gtk.TreeViewColumn("Instalado", toggle, active=self.COL_INSTALLED))
-        for title, column in (("Codigo", self.COL_CODE), ("Nombre", self.COL_NAME), ("Pack gratuito", self.COL_PACK)):
+        for title, column in (("Codigo", self.COL_CODE), ("Nombre", self.COL_NAME), ("Pack gratuito", self.COL_PACK), ("Voces", self.COL_VOICES)):
             tree_column = Gtk.TreeViewColumn(title, Gtk.CellRendererText(), text=column)
             tree_column.set_sort_column_id(column)
             tree_column.set_resizable(True)
@@ -58,6 +60,20 @@ class StageCharactersWindow(Gtk.Window):
         scrolled.set_vexpand(True)
         scrolled.add(self.view)
         box.pack_start(scrolled, True, True, 0)
+
+        voices_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.voice_lang = Gtk.ComboBoxText()
+        for key in self.VOICE_LANGS:
+            self.voice_lang.append(key, self.VOICE_LABELS[key])
+        self.voice_lang.set_active_id("auto")
+        self.voice_lang.set_tooltip_text("Los packs de voces son de nikke-wallpaper-packs; solo se baja el personaje elegido")
+        self.voices_btn = Gtk.Button(label="Descargar voces")
+        self.voices_btn.set_tooltip_text("Descarga solo las voces de los personajes seleccionados (unos 5-15 MB cada uno)")
+        self.voices_btn.connect("clicked", self._on_voices)
+        self.voices_remove_btn = Gtk.Button(label="Quitar voces")
+        self.voices_remove_btn.connect("clicked", self._on_voices_remove)
+        for widget in (self.voice_lang, self.voices_btn, self.voices_remove_btn):
+            voices_row.pack_start(widget, False, False, 0)
 
         buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.download_btn = Gtk.Button(label="Descargar seleccionados")
@@ -70,6 +86,7 @@ class StageCharactersWindow(Gtk.Window):
         for button in (self.download_btn, self.remove_btn, self.reload_btn):
             buttons.pack_start(button, False, False, 0)
         box.pack_start(buttons, False, False, 0)
+        box.pack_start(voices_row, False, False, 0)
 
         bg_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         bg_row.pack_start(Gtk.Label(label="Fondo:"), False, False, 0)
@@ -109,7 +126,7 @@ class StageCharactersWindow(Gtk.Window):
 
     def _set_busy(self, busy, message=None):
         self.busy = busy
-        for button in (self.download_btn, self.remove_btn, self.reload_btn):
+        for button in (self.download_btn, self.remove_btn, self.reload_btn, self.voices_btn, self.voices_remove_btn):
             button.set_sensitive(not busy)
         if busy:
             self.spinner.start()
@@ -153,9 +170,11 @@ class StageCharactersWindow(Gtk.Window):
 
     def _fill(self, rows):
         self.store.clear()
+        voices = nikke_stage.read_manifest().get("voices", {})
         for code, name, installed, available in rows:
             pack = "?" if available is None else ("si" if available else "no hay")
-            self.store.append([installed, code, name, pack])
+            have = ", ".join(lang for lang in nikke_voices.LANGUAGES if code in voices.get(lang, {}))
+            self.store.append([installed, code, name, pack, have])
         self.filter.refilter()
 
     def _load_catalog(self):
@@ -244,3 +263,33 @@ class StageCharactersWindow(Gtk.Window):
             self.status.set_text("Selecciona uno o varios personajes instalados.")
             return
         self._run(lambda progress: nikke_stage.remove(codes), f"Quitados {len(codes)} personaje(s).")
+
+    def _on_voices(self, _button):
+        codes = self._selected_codes()
+        if not codes:
+            self.status.set_text("Selecciona uno o varios personajes para bajar sus voces.")
+            return
+        chosen = self.voice_lang.get_active_id() or "auto"
+
+        def work(progress):
+            missing = []
+            for code in codes:
+                langs = [chosen] if chosen != "auto" else nikke_voices.languages_with_voices(code)[:1]
+                if not langs or not nikke_voices.files_for(langs[0], code):
+                    missing.append(code)
+                    continue
+                nikke_voices.download_voices(code, langs[0], progress=progress)
+            if missing:
+                raise PackError("Sin voces publicadas para: " + ", ".join(missing)
+                                + (" (prueba otro idioma)." if chosen != "auto" else "."))
+
+        self._run(work, f"Voces instaladas para {len(codes)} personaje(s). Reaplica Nikke Stage para oírlas "
+                        f"(ajusta el volumen en su panel de Ajustes).")
+
+    def _on_voices_remove(self, _button):
+        codes = self._selected_codes()
+        if not codes:
+            self.status.set_text("Selecciona uno o varios personajes.")
+            return
+        self._run(lambda progress: [nikke_voices.remove_voices(code) for code in codes],
+                  f"Voces quitadas de {len(codes)} personaje(s).")
