@@ -24,7 +24,7 @@ import sys
 import threading
 import time
 
-from . import config
+from . import compat, config
 from .config import FileLock, atomic_write_json, load_json
 from .engine_log import append_bounded, capture
 
@@ -254,6 +254,7 @@ def record_result(screen, wid, crashed, returncode=None, detail=""):
         if crashed:
             current[wid] = {"screen": screen, "detected_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                             "returncode": returncode, "detail": detail[-4000:]}
+            compat.record(wid, False, detail or f"el motor terminó con código {returncode}")
         else:
             current.pop(wid, None)
         atomic_write_json(config.KNOWN_BAD_FILE, current)
@@ -390,6 +391,7 @@ def restart_screen(screen, wid, allow_repair=True, on_started=None, expected_pid
             # Solo cuenta como "ultimo que funcionaba" si sigue vivo tras STABLE_SECONDS.
             if proc.poll() is None and _read_pid(pid_file(screen)) == proc.pid:
                 mark_last_good(screen, wid)
+                compat.record(wid, True)
 
         timer = threading.Timer(STABLE_SECONDS, confirm_stable)
         timer.daemon = True

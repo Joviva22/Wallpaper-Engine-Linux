@@ -31,6 +31,7 @@ from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
 from .properties_window import PropertiesDialog
 from .stage_window import StageCharactersWindow
+from . import compat
 from .live_preview import LivePreview, PREVIEW_SECONDS
 from .repair import attempt_repair, attempt_repair_all
 
@@ -567,6 +568,7 @@ class PickerWindow(Gtk.Window):
 
     def populate(self):
         self.known_bad = load_known_bad()
+        self.compat_history = compat.load_history()
         self.all_items = load_wallpapers()
         self.items_by_id = {item["id"]: item for item in self.all_items}
 
@@ -636,20 +638,25 @@ class PickerWindow(Gtk.Window):
         self.flowbox.invalidate_filter()
         self.flowbox.invalidate_sort()
 
-    def _badge_for(self, wid):
-        if wid in self.known_bad:
-            return "⚠ Fallo conocido"
+    def _compat_for(self, wid):
         item = self.items_by_id.get(wid)
-        if item and item.get("type") == "Web":
-            # Confirmado en pruebas reales: 18 de 19 wallpapers tipo Web crashean al
-            # cambiar de wallpaper (bug conocido y sin resolver de CEF/GPU en
-            # linux-wallpaperengine bajo Wayland, issues #628 y #629 del proyecto). El
-            # cambio de todas formas se completa (el siguiente wallpaper carga bien),
-            # pero es mejor avisar de antemano que enterarse solo por el log.
-            return "⚠ Tipo Web: inestable"
+        if not item:
+            return compat.UNTESTED, "", ""
+        return compat.status(item, self.known_bad, self.compat_history, web_wallpapers_allowed())
+
+    def _badge_for(self, wid):
+        state, label, _ = self._compat_for(wid)
+        if state in (compat.FAILED, compat.BLOCKED):
+            return label
         if wid in self.hidden_ids:
             return "Oculto"
-        return None
+        return label
+
+    def _update_card_badge(self, wid):
+        card = self.cards.get(wid)
+        if card:
+            card.set_badge(self._badge_for(wid))
+            card.set_tooltip_text(self._compat_for(wid)[2] or None)
 
     def _build_card(self, item):
         wid = item["id"]
@@ -1017,7 +1024,23 @@ class PickerWindow(Gtk.Window):
         title = self.items_by_id.get(wid, {}).get("title", wid)
         self.status_label.set_text(f"Aplicando en {monitor}: {title}")
 
+    def _refresh_compat(self):
+        """Recarga el historial de compatibilidad (lo escribe el vigilante 15 s despues de aplicar) y
+        actualiza solo las tarjetas cuyo estado cambio."""
+        history = compat.load_history()
+        known_bad = load_known_bad()
+        changed = {w for w in set(history) | set(self.compat_history) if history.get(w) != self.compat_history.get(w)}
+        changed |= {w for w in set(known_bad) | set(self.known_bad) if (w in known_bad) != (w in self.known_bad)}
+        self.compat_history, self.known_bad = history, known_bad
+        for wid in changed:
+            self._update_card_badge(wid)
+        if self._detail_wid in changed:
+            self._update_detail_panel(self._detail_wid)
+
     def _poll_apply_status(self):
+        self._compat_tick = getattr(self, "_compat_tick", 0) + 1
+        if self._compat_tick % 5 == 0:
+            self._refresh_compat()
         for monitor in self.monitors:
             state = load_json(os.path.join(CONF_DIR, f"status_{monitor}.json"), {})
             token = state.get("token")
@@ -1029,8 +1052,9 @@ class PickerWindow(Gtk.Window):
             self.update_monitor_label(monitor)
             self._refresh_assigned_badges()
             self.known_bad = load_known_bad()
+            self.compat_history = compat.load_history()
             for card_wid, card in self.cards.items():
-                card.set_badge(self._badge_for(card_wid))
+                self._update_card_badge(card_wid)
             self._sync_speed_combo()
             if state.get("state") == "rolled_back":
                 failed_title = self.items_by_id.get(state.get("failed_id"), {}).get("title", state.get("failed_id"))
@@ -1096,9 +1120,7 @@ class PickerWindow(Gtk.Window):
             self.hidden_ids.add(wid)
         else:
             self.hidden_ids.discard(wid)
-        card = self.cards.get(wid)
-        if card:
-            card.set_badge(self._badge_for(wid))
+        self._update_card_badge(wid)
         if wid == self._detail_wid:
             self.detail_hide_btn.set_label("Mostrar de nuevo" if hidden else "Ocultar")
 
@@ -1202,6 +1224,7 @@ class PickerWindow(Gtk.Window):
             self.detail_info_grid.remove(child)
         rows = [
             ("Tipo", (item.get("type") or "Desconocido") + (" (preset)" if item.get("preset") else "")),
+            ("Compatibilidad", (lambda c: f"{c[1]}. {c[2]}")(self._compat_for(wid))),
             ("Categorias", ", ".join(item.get("tags", [])[:4]) or "-"),
             ("Clasificacion", item.get("rating") or "Desconocido"),
             ("Anadido", self._format_date(item.get("mtime"))),
@@ -1288,9 +1311,7 @@ class PickerWindow(Gtk.Window):
 
         if ok:
             self._remove_known_bad(wid)
-            card = self.cards.get(wid)
-            if card:
-                card.set_badge(self._badge_for(wid))
+            self._update_card_badge(wid)
             self.detail_repair_btn.set_visible(False)
             self.status_label.set_text(f"Reparado: {msg}")
 
@@ -1298,6 +1319,8 @@ class PickerWindow(Gtk.Window):
         if wid not in self.known_bad:
             return
         self.known_bad.pop(wid, None)
+        compat.clear(wid)
+        self.compat_history.pop(wid, None)
         try:
             atomic_write_json(KNOWN_BAD_FILE, self.known_bad)
         except Exception:
@@ -1335,9 +1358,7 @@ class PickerWindow(Gtk.Window):
     def _on_repair_all_done(self, repaired, total):
         for wid in repaired:
             self._remove_known_bad(wid)
-            card = self.cards.get(wid)
-            if card:
-                card.set_badge(self._badge_for(wid))
+            self._update_card_badge(wid)
 
         dialog = Gtk.MessageDialog(
             transient_for=self, modal=True, message_type=Gtk.MessageType.INFO,
@@ -1418,6 +1439,7 @@ class PickerWindow(Gtk.Window):
 
         def done(ok, message):
             def update():
+                self._refresh_compat()
                 if ok:
                     self.status_label.set_text(f"Prueba de {title}: {message}")
                 else:

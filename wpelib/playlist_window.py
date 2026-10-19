@@ -1,13 +1,15 @@
 """Ventana de rotacion (playlists) de wallpapers por pantalla."""
 import subprocess
+import threading
 import time
 
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import GLib, Gtk
 
 from .config import load_playlists, save_playlists, load_favorite_ids, APPLY_SCRIPT
+from . import rotation, selection
 from .ui import labeled_frame, icon_button
 
 INTERVAL_PRESETS = [
@@ -57,6 +59,25 @@ class PlaylistWindow(Gtk.Window):
             top_box.pack_start(preset_btn, False, False, 0)
 
         vbox.pack_start(top_frame, False, False, 0)
+
+        status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.rotation_label = Gtk.Label(label="", xalign=0)
+        self.rotation_label.set_line_wrap(True)
+        status_box.pack_start(self.rotation_label, True, True, 0)
+        prev_btn = icon_button("Anterior", "media-skip-backward-symbolic")
+        prev_btn.set_tooltip_text("Aplicar ya el fondo anterior de la lista")
+        prev_btn.connect("clicked", lambda _b: self.on_step_clicked(-1))
+        status_box.pack_start(prev_btn, False, False, 0)
+        next_btn = icon_button("Siguiente ahora", "media-skip-forward-symbolic")
+        next_btn.set_tooltip_text("Aplicar ya el siguiente fondo de la lista")
+        next_btn.connect("clicked", lambda _b: self.on_step_clicked(1))
+        status_box.pack_start(next_btn, False, False, 0)
+        vbox.pack_start(status_box, False, False, 0)
+
+        self.warning_label = Gtk.Label(label="", xalign=0)
+        self.warning_label.set_line_wrap(True)
+        self.warning_label.get_style_context().add_class("error")
+        vbox.pack_start(self.warning_label, False, False, 0)
 
         lists_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         vbox.pack_start(lists_box, True, True, 0)
@@ -109,9 +130,17 @@ class PlaylistWindow(Gtk.Window):
 
         playlist_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         playlist_vbox.pack_start(Gtk.Label(label="Orden de rotacion"), False, False, 0)
-        self.playlist_store = Gtk.ListStore(str, str)  # titulo, id
+        self.playlist_store = Gtk.ListStore(str, str, str)  # titulo, id, motivo por el que no rotara
         self.playlist_view = Gtk.TreeView(model=self.playlist_store)
-        self.playlist_view.append_column(Gtk.TreeViewColumn("Titulo", Gtk.CellRendererText(), text=0))
+        column = Gtk.TreeViewColumn("Titulo")
+        title_cell = Gtk.CellRendererText()
+        column.pack_start(title_cell, True)
+        column.add_attribute(title_cell, "text", 0)
+        warn_cell = Gtk.CellRendererText()
+        warn_cell.set_property("foreground", "#d9822b")
+        column.pack_start(warn_cell, False)
+        column.add_attribute(warn_cell, "text", 2)
+        self.playlist_view.append_column(column)
         self.playlist_view.set_headers_visible(False)
         playlist_scrolled = Gtk.ScrolledWindow()
         playlist_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -134,6 +163,68 @@ class PlaylistWindow(Gtk.Window):
             self.avail_store.append([item["title"], item["id"]])
 
         self.load_monitor_playlist(monitors[0])
+        self._poll = GLib.timeout_add_seconds(2, self._refresh_status)
+        self.connect("destroy", lambda *_: GLib.source_remove(self._poll))
+        self._refresh_status()
+
+    def _append_playlist(self, title, wid):
+        self.playlist_store.append([title, wid, ""])
+
+    def _refresh_problems(self):
+        """Marca en la lista los fondos que la rotación se saltará y resume cuántos son."""
+        ids = [row[1] for row in self.playlist_store]
+        problems = selection.playlist_problems(ids)
+        for row in self.playlist_store:
+            row[2] = f"   ⚠ no rotará: {problems[row[1]]}" if row[1] in problems else ""
+        if not ids:
+            self.warning_label.set_text("")
+        elif len(problems) == len(ids):
+            self.warning_label.set_text("⚠ Ningún fondo de esta lista puede rotar, así que no cambiará nunca. "
+                                        "Mira el motivo junto a cada uno.")
+        elif problems:
+            self.warning_label.set_text(f"⚠ {len(problems)} de {len(ids)} fondos se saltarán en la rotación "
+                                        "(el motivo está junto a cada uno).")
+        else:
+            self.warning_label.set_text("")
+
+    def _refresh_status(self):
+        monitor = self.monitor_combo.get_active_text()
+        if not monitor:
+            return True
+        info = rotation.status(monitor)
+        title = lambda wid: self.titles_by_id.get(wid, wid) if wid else "-"
+        if not info["items"]:
+            text = "La lista está vacía."
+        elif not info["enabled"]:
+            text = "Rotación desactivada en esta pantalla (guarda con la casilla marcada para activarla)."
+        elif info["paused"]:
+            text = "Rotación en pausa (desde la bandeja)."
+        elif info["next"] is None:
+            text = "Rotación activada, pero ningún fondo de la lista puede rotar."
+        else:
+            left = info["seconds_left"] or 0
+            when = "en unos segundos" if left < 60 else f"en {left // 60} min"
+            text = f"Ahora: {title(info['current'])}  ·  Siguiente: {title(info['next'])}  ·  cambia {when}"
+        self.rotation_label.set_text(text)
+        return True
+
+    def on_step_clicked(self, direction):
+        monitor = self.monitor_combo.get_active_text()
+        self.status_label.set_text("Cambiando de fondo...")
+
+        def work():
+            ok, result = rotation.step(monitor, direction)
+            GLib.idle_add(done, ok, result)
+
+        def done(ok, result):
+            self.playlists = load_playlists() if ok else self.playlists
+            self.status_label.set_text(f"Aplicado: {self.titles_by_id.get(result, result)}" if ok else result)
+            self._refresh_status()
+            return False
+
+        self.stash_current_monitor()
+        save_playlists(self.playlists)
+        threading.Thread(target=work, daemon=True).start()
 
     def avail_filter_func(self, model, iter_, data):
         query = self.avail_search.get_text().strip().lower()
@@ -150,7 +241,9 @@ class PlaylistWindow(Gtk.Window):
         self.interval_spin.set_value(data.get("interval_minutes", 30))
         self.playlist_store.clear()
         for wid in data.get("items", []):
-            self.playlist_store.append([self.titles_by_id.get(wid, wid), wid])
+            self._append_playlist(self.titles_by_id.get(wid, wid), wid)
+        self._refresh_problems()
+        self._refresh_status()
 
     def stash_current_monitor(self):
         monitor = self.monitor_combo.get_active_text()
@@ -179,7 +272,8 @@ class PlaylistWindow(Gtk.Window):
         if not iter_:
             self.status_label.set_text("Selecciona un wallpaper de la lista de disponibles")
             return
-        self.playlist_store.append([model[iter_][0], model[iter_][1]])
+        self._append_playlist(model[iter_][0], model[iter_][1])
+        self._refresh_problems()
 
     def on_remove_clicked(self, button):
         model, iter_ = self.get_selected_row(self.playlist_view)
@@ -187,6 +281,7 @@ class PlaylistWindow(Gtk.Window):
             self.status_label.set_text("Selecciona un wallpaper de la rotacion para quitarlo")
             return
         model.remove(iter_)
+        self._refresh_problems()
 
     def on_move_up(self, button):
         model, iter_ = self.get_selected_row(self.playlist_view)
@@ -213,8 +308,9 @@ class PlaylistWindow(Gtk.Window):
         added = 0
         for wid in favorites:
             if wid not in existing and wid in self.titles_by_id:
-                self.playlist_store.append([self.titles_by_id.get(wid, wid), wid])
+                self._append_playlist(self.titles_by_id.get(wid, wid), wid)
                 added += 1
+        self._refresh_problems()
         self.status_label.set_text(f"Anadidos {added} favoritos a la rotacion" if added else "Tus favoritos ya estaban todos en la rotacion")
 
     def on_shuffle_clicked(self, button):
@@ -223,7 +319,8 @@ class PlaylistWindow(Gtk.Window):
         random.shuffle(rows)
         self.playlist_store.clear()
         for title, wid in rows:
-            self.playlist_store.append([title, wid])
+            self._append_playlist(title, wid)
+        self._refresh_problems()
         self.status_label.set_text("Orden aleatorizado")
 
     def on_save_clicked(self, button):
@@ -232,12 +329,19 @@ class PlaylistWindow(Gtk.Window):
         monitor = self.monitor_combo.get_active_text()
         data = self.playlists.get(monitor, {})
         if data.get("enabled") and data.get("items"):
-            data["current_index"] = 0
-            data["last_switch"] = int(time.time())
-            self.playlists[monitor] = data
-            save_playlists(self.playlists, fresh_progress={monitor})
-            subprocess.Popen([APPLY_SCRIPT, f"{monitor}={data['items'][0]}"])
-            self.status_label.set_text(f"Rotacion guardada y activada en {monitor} ({len(data['items'])} wallpapers)")
+            # Se empieza por el primer fondo que de verdad puede rotar (no por uno oculto, roto o web bloqueado).
+            problems = selection.playlist_problems(data["items"])
+            start = next((i for i, wid in enumerate(data["items"]) if wid not in problems), None)
+            if start is None:
+                self.status_label.set_text(f"Guardado en {monitor}, pero ningún fondo de la lista puede rotar: no cambiará.")
+            else:
+                data["current_index"] = start
+                data["last_switch"] = int(time.time())
+                self.playlists[monitor] = data
+                save_playlists(self.playlists, fresh_progress={monitor})
+                subprocess.Popen([APPLY_SCRIPT, f"{monitor}={data['items'][start]}"])
+                skipped = f" ({len(problems)} se saltarán)" if problems else ""
+                self.status_label.set_text(f"Rotacion guardada y activada en {monitor} ({len(data['items'])} wallpapers){skipped}")
         else:
             self.status_label.set_text(f"Configuracion guardada para {monitor} (rotacion desactivada)")
         if self.on_saved:

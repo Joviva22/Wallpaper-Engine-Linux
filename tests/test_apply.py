@@ -13,7 +13,7 @@ os.environ["HOME"] = tempfile.mkdtemp()
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from wpelib import apply, config  # noqa: E402
+from wpelib import compat, apply, config  # noqa: E402
 
 
 def wait_for(cond, timeout=10):
@@ -320,6 +320,8 @@ class RollbackTest(Base):
         self.assertTrue(apply._alive(pid))
         self.assertNotEqual(pid, first_pid)
         self.assertEqual(apply.get_last_good("eDP-1"), "123")
+        history = compat.load_history()
+        self.assertEqual((history["123"]["state"], history["456"]["state"]), ("ok", "failed"))
 
     def test_without_a_previous_good_wallpaper_nothing_is_restored(self):
         t = self.start("eDP-1", "456")

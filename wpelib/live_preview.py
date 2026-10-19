@@ -11,7 +11,7 @@ import tempfile
 import threading
 import time
 
-from . import apply, config
+from . import apply, compat, config
 
 PREVIEW_SECONDS = 30
 WINDOW_GEOMETRY = "0x0x960x540"
@@ -90,6 +90,7 @@ class LivePreview:
             if proc.poll() is None:
                 self._terminate(proc)
                 if not superseded:
+                    compat.record(wid, True, source="preview")
                     on_done(True, "Prueba terminada.")
                 log.close()
                 return
@@ -101,6 +102,7 @@ class LivePreview:
                 return  # el usuario cerro la prueba o lanzo otra: no es un fallo
             crashed = apply.returncode_is_crash(returncode) or apply.CRASH_LOG_PATTERN.search(tail)
             if crashed:
+                compat.record(wid, False, tail.strip()[-600:] or f"código {returncode}", source="preview")
                 on_done(False, f"El motor terminó con código {returncode}. " + tail.strip()[-600:])
             else:
                 on_done(True, "La ventana de prueba se cerró.")

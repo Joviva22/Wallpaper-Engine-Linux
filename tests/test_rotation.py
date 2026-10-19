@@ -91,6 +91,59 @@ class RotationTest(unittest.TestCase):
         rotation.tick(now=1000, apply_fn=self.apply)
         self.assertEqual(self.applied, [])
 
+    # --- estado, pasos manuales y problemas de la lista -------------------------------------------------
+    def test_status_reports_current_next_and_countdown(self):
+        self.playlist(items=["1", "2", "3"], current_index=0, last_switch=1000, interval_minutes=2)
+        info = rotation.status("eDP-1", now=1030)
+        self.assertEqual((info["current"], info["next"], info["seconds_left"]), ("1", "2", 90))
+        self.assertEqual((info["items"], info["playable"], info["enabled"]), (3, 3, True))
+
+    def test_status_with_disabled_paused_and_unplayable(self):
+        self.playlist(enabled=False)
+        self.assertIsNone(rotation.status("eDP-1", now=5)["seconds_left"])
+        self.playlist()
+        open(os.path.join(self.tmp, "rotation_paused"), "w").close()
+        info = rotation.status("eDP-1", now=5)
+        self.assertTrue(info["paused"])
+        self.assertIsNone(info["seconds_left"])
+        os.remove(os.path.join(self.tmp, "rotation_paused"))
+        self.web = False
+        self.playlist(items=["2", "4"])
+        info = rotation.status("eDP-1", now=5)
+        self.assertEqual((info["playable"], info["next"]), (0, None))
+
+    def test_status_of_unknown_screen_is_empty(self):
+        info = rotation.status("HDMI-9", now=5)
+        self.assertEqual((info["items"], info["enabled"], info["current"]), (0, False, None))
+
+    def test_step_forward_and_back_even_if_disabled(self):
+        self.playlist(enabled=False, items=["1", "3", "5"], current_index=1)
+        self.assertEqual(rotation.step("eDP-1", 1, now=500, apply_fn=self.apply), (True, "5"))
+        self.assertEqual((self.state()["current_index"], self.state()["last_switch"]), (2, 500))
+        self.assertEqual(rotation.step("eDP-1", -1, now=600, apply_fn=self.apply), (True, "3"))
+        self.assertEqual(rotation.step("eDP-1", -1, now=700, apply_fn=self.apply), (True, "1"))
+        self.assertEqual(rotation.step("eDP-1", -1, now=800, apply_fn=self.apply), (True, "5"))  # da la vuelta
+
+    def test_step_skips_unplayable_and_reports_failures(self):
+        self.web = False
+        self.playlist(items=["2", "1"], current_index=1)
+        self.assertEqual(rotation.step("eDP-1", 1, apply_fn=self.apply), (True, "1"))
+        self.assertFalse(rotation.step("eDP-1", 1, apply_fn=lambda s, w: False)[0])
+        self.playlist(items=["2", "4"])
+        ok, message = rotation.step("eDP-1", 1, apply_fn=self.apply)
+        self.assertFalse(ok)
+        self.assertIn("puede rotar", message)
+        self.playlist(items=[])
+        self.assertFalse(rotation.step("eDP-1", 1, apply_fn=self.apply)[0])
+
+    def test_playlist_problems_explain_each_skipped_item(self):
+        self.web = False
+        problems = selection.playlist_problems(["1", "2", "4", "999"])
+        self.assertEqual(sorted(problems), ["2", "4", "999"])
+        self.assertIn("web", problems["2"])
+        self.assertIn("preset", problems["4"])
+        self.assertIn("instalado", problems["999"])
+
 
 if __name__ == "__main__":
     unittest.main()
