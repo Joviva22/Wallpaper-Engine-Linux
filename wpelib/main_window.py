@@ -31,7 +31,7 @@ from .workshop_window import WorkshopBrowserWindow
 from .playlist_window import PlaylistWindow
 from .properties_window import PropertiesDialog
 from .stage_window import StageCharactersWindow
-from . import compat, diagnostics
+from . import cleanup, compat, diagnostics
 from .live_preview import LivePreview, PREVIEW_SECONDS
 from .repair import attempt_repair, attempt_repair_all
 
@@ -445,6 +445,7 @@ class PickerWindow(Gtk.Window):
         add_action("Desactivar fondos web", "dialog-password-symbolic", self._disable_web_wallpapers)
         add_action("Reparar toda la biblioteca", "applications-utilities-symbolic", self.on_repair_all_clicked)
         add_action("Diagnóstico...", "dialog-information-symbolic", self._open_diagnostics)
+        add_action("Limpiar espacio...", "edit-clear-all-symbolic", self._open_cleanup)
         box.pack_start(Gtk.Separator(), False, False, 2)
         add_action("Nikke Stage: personajes...", "avatar-default-symbolic", self._open_stage_characters)
         box.show_all()
@@ -1587,6 +1588,57 @@ class PickerWindow(Gtk.Window):
             self.status_label.set_text("Ya estaba en la rotacion de esa pantalla")
 
     # -- Ventanas secundarias --------------------------------------------------
+
+    def _open_cleanup(self, _button=None):
+        """Muestra cuánto ocupa lo que la app puede regenerar y borra lo que elijas."""
+        categories = cleanup.scan()
+        dialog = Gtk.Dialog(title="Limpiar espacio", transient_for=self, modal=True)
+        dialog.set_default_size(560, -1)
+        box = dialog.get_content_area()
+        box.set_border_width(12)
+        box.set_spacing(8)
+        intro = Gtk.Label(
+            label="Solo se borra lo que la app vuelve a generar. No se tocan tus wallpapers, las copias de "
+                  "reparaciones, los personajes y voces de Nikke Stage ni tu configuración.", xalign=0)
+        intro.set_line_wrap(True)
+        box.pack_start(intro, False, False, 0)
+        checks = []
+        total = Gtk.Label(xalign=0)
+
+        def update_total(*_):
+            chosen = sum(c.size for c, check in checks if check.get_active())
+            total.set_text(f"Se liberarán {cleanup.human(chosen)}")
+            clean_btn.set_sensitive(any(check.get_active() for _c, check in checks))
+
+        if not categories:
+            box.pack_start(Gtk.Label(label="No hay nada que limpiar."), False, False, 0)
+        for cat in categories:
+            amount = cleanup.human(cat.size) if cat.size else f"{len(cat.paths)} archivos"
+            check = Gtk.CheckButton(label=f"{cat.label} — {amount}")
+            check.set_active(cat.default and not cat.blocked)
+            check.set_sensitive(not cat.blocked)
+            check.connect("toggled", update_total)
+            note = Gtk.Label(label=cat.blocked or cat.note, xalign=0)
+            note.set_line_wrap(True)
+            note.get_style_context().add_class("dim-label")
+            note.set_margin_start(26)
+            box.pack_start(check, False, False, 0)
+            box.pack_start(note, False, False, 0)
+            checks.append((cat, check))
+        box.pack_start(total, False, False, 4)
+        dialog.add_button("Cancelar", Gtk.ResponseType.CANCEL)
+        clean_btn = dialog.add_button("Limpiar", Gtk.ResponseType.OK)
+        clean_btn.get_style_context().add_class("suggested-action")
+        update_total()
+        dialog.show_all()
+        response = dialog.run()
+        chosen = [c for c, check in checks if check.get_active()]
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK or not chosen:
+            return
+        freed, errors = cleanup.clean(chosen)
+        self.status_label.set_text(f"Limpieza hecha: {cleanup.human(freed)} liberados"
+                                   + (f" ({len(errors)} avisos: {errors[0][:120]})" if errors else ""))
 
     def _open_diagnostics(self, _button=None):
         """Informe de estado (pantallas, fallos, rotación y registro del motor) para leer o copiar."""
